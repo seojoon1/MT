@@ -1,14 +1,12 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { isAuthed } from './storage/authStorage'
-import AuthCallbackPage from './pages/AuthCallbackPage'
-import AuthStartPage from './pages/AuthStartPage'
-import FavoritesPage from './pages/FavoritesPage'
 import LoginPage from './pages/LoginPage'
 import MentDetailPage from './pages/MentDetailPage'
 import MentEditorPage from './pages/MentEditorPage'
 import MentListPage from './pages/MentListPage'
-import PlannerPage from './pages/PlannerPage'
-import ResultPage from './pages/ResultPage'
+import AuthStartPage from './pages/AuthStartPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
+import './i18n/config'
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
   const location = useLocation()
@@ -21,40 +19,36 @@ function RequireAuth({ children }: { children: React.ReactElement }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/planner" replace />} />
-
+      <Route path="/" element={<Navigate to="/ments" replace />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/auth/:provider" element={<AuthStartPage />} />
+      <Route path="/auth/start" element={<AuthStartPage />} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       <Route
-        path="/planner"
+        path="/ments"
         element={
           <RequireAuth>
-            <PlannerPage />
+            <MentListPage />
           </RequireAuth>
         }
       />
       <Route
-        path="/result"
+        path="/ments/new"
         element={
           <RequireAuth>
-            <ResultPage />
+            <MentEditorPage />
           </RequireAuth>
         }
       />
       <Route
-        path="/favorites"
+        path="/ments/:id"
         element={
           <RequireAuth>
-            <FavoritesPage />
+            <MentDetailPage />
           </RequireAuth>
         }
       />
 
-      <Route path="/ments" element={<MentListPage />} />
-      <Route path="/ments/new" element={<MentEditorPage />} />
-      <Route path="/ments/:id" element={<MentDetailPage />} />
       <Route path="*" element={<Navigate to="/ments" replace />} />
     </Routes>
   )

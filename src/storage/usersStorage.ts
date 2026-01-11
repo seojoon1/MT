@@ -1,11 +1,10 @@
-const USERS_KEY = 'flirting_ments_users'
+import { STORAGE_KEYS } from '../constants'
+import type { DemoUser } from '../types'
 
-export type DemoUser = {
-  email: string
-  username: string
-  password: string
-  createdAt: number
-}
+const USERS_KEY = STORAGE_KEYS.app.users
+
+// 기존 코드 호환성을 위해 re-export
+export type { DemoUser }
 
 function safeParse(json: string | null): DemoUser[] {
   if (!json) return []
@@ -16,6 +15,7 @@ function safeParse(json: string | null): DemoUser[] {
       if (!x || typeof x !== 'object') return false
       const u = x as Record<string, unknown>
       return (
+        typeof u.localId === 'string' &&
         typeof u.email === 'string' &&
         typeof u.username === 'string' &&
         typeof u.password === 'string' &&
@@ -35,6 +35,11 @@ export function setUsers(next: DemoUser[]): void {
   localStorage.setItem(USERS_KEY, JSON.stringify(next))
 }
 
+export function findUserByLocalId(localId: string): DemoUser | null {
+  const normalized = localId.trim().toLowerCase()
+  return getUsers().find((u) => u.localId.toLowerCase() === normalized) ?? null
+}
+
 export function findUserByEmail(email: string): DemoUser | null {
   const normalized = email.trim().toLowerCase()
   return getUsers().find((u) => u.email.toLowerCase() === normalized) ?? null
@@ -45,8 +50,9 @@ export function findUserByUsername(username: string): DemoUser | null {
   return getUsers().find((u) => u.username.toLowerCase() === normalized) ?? null
 }
 
-export function addUser(input: { email: string; username: string; password: string }): DemoUser {
+export function addUser(input: { localId: string; email: string; username: string; password: string }): DemoUser {
   const nextUser: DemoUser = {
+    localId: input.localId.trim(),
     email: input.email.trim(),
     username: input.username.trim(),
     password: input.password,

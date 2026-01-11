@@ -1,43 +1,53 @@
-const APP_PREFIX = 'flirting_ments'
+import { STORAGE_KEYS } from '../constants'
 
-const BOOKMARKS_KEY = `${APP_PREFIX}_bookmarks`
+const BOOKMARKS_KEY = STORAGE_KEYS.app.favorites // 즐겨찾기와 동일 키 사용
 
-type BookmarkState = string[]
-
-function safeParse(json: string | null): BookmarkState | null {
-  if (!json) return null
-  try {
-    const data = JSON.parse(json) as unknown
-    if (!Array.isArray(data)) return null
-    return data.filter((x): x is string => typeof x === 'string')
-  } catch {
-    return null
-  }
-}
-
+/**
+ * 북마크(즐겨찾기) ID 목록을 가져옵니다.
+ */
 export function getBookmarks(): string[] {
-  const parsed = safeParse(localStorage.getItem(BOOKMARKS_KEY))
-  if (!parsed) {
-    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify([] satisfies string[]))
+  try {
+    const json = localStorage.getItem(BOOKMARKS_KEY)
+    if (!json) return []
+    const data = JSON.parse(json) as unknown
+    if (!Array.isArray(data)) return []
+    return data.filter((item): item is string => typeof item === 'string')
+  } catch {
     return []
   }
-  return parsed
 }
 
-export function setBookmarks(ids: string[]): void {
-  const unique = Array.from(new Set(ids))
-  localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(unique))
+/**
+ * 북마크 목록을 저장합니다.
+ */
+export function setBookmarks(bookmarks: string[]): void {
+  localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks))
 }
 
-export function toggleBookmark(id: string): string[] {
-  const current = getBookmarks()
-  const next = current.includes(id)
-    ? current.filter((x) => x !== id)
-    : [...current, id]
-  setBookmarks(next)
-  return next
+/**
+ * 북마크를 토글합니다 (추가/제거).
+ * @returns 토글 후 북마크 여부
+ */
+export function toggleBookmark(id: string): boolean {
+  const bookmarks = getBookmarks()
+  const index = bookmarks.indexOf(id)
+  
+  if (index === -1) {
+    // 추가
+    bookmarks.push(id)
+    setBookmarks(bookmarks)
+    return true
+  } else {
+    // 제거
+    bookmarks.splice(index, 1)
+    setBookmarks(bookmarks)
+    return false
+  }
 }
 
-export function isBookmarked(id: string, bookmarks: string[]): boolean {
-  return bookmarks.includes(id)
+/**
+ * 특정 ID가 북마크되어 있는지 확인합니다.
+ */
+export function isBookmarked(id: string): boolean {
+  return getBookmarks().includes(id)
 }

@@ -1,13 +1,3 @@
-export type Tag = string
-
-export type MentStatus = 'pending' | 'approved' | 'rejected'
-
-export type Ment = {
-  id: string
-  ko: string
-  lo: string
-  tags: Tag[]
-  aiHint: string
-  status: MentStatus
-  createdAt: number
-}
+// 모든 타입은 types/index.ts로 통합되었습니다.
+// 기존 코드 호환성을 위해 re-export 합니다.
+export type { Tag, MentStatus, Ment, MentItem } from './index'

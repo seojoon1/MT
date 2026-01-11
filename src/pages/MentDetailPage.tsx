@@ -1,158 +1,280 @@
-import { ChevronLeft, Volume2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { getIsAdmin, getMentById } from '../storage/mentStorage'
-
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(' ')
-}
+import { Check, X } from 'lucide-react'
+import { useMemo, useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { translateTag } from '../i18n/tagTranslations'
+import { PageContainer, Header, Main, Card, Button, Tag, Spinner, Alert } from '../components'
+import { ROUTES } from '../constants'
+import { getMentList, approveMent, rejectMent } from '../services/api'
+import type { Ment, MentStatus } from '../types/ment'
+import { isAdmin as checkIsAdmin } from '../storage/authStorage'
 
 export default function MentDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const isAdmin = useMemo(() => getIsAdmin(), [])
+  const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
+  const isAdmin = useMemo(() => checkIsAdmin(), [])
 
-  const ment = useMemo(() => {
-    if (!id) return null
-    return getMentById(id)
+  const [ment, setMent] = useState<Ment | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [showRejectInput, setShowRejectInput] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  // 어드민 모드 체크 및 리다이렉트
+  useEffect(() => {
+    const adminStatus = checkIsAdmin()
+    if (adminStatus) {
+      navigate(ROUTES.MENTS, { replace: true })
+      return
+    }
+  }, [navigate])
+
+  // API에서 멘트 목록 가져와서 해당 ID 찾기
+  useEffect(() => {
+    const fetchMent = async () => {
+      if (!id) return
+      
+      setLoading(true)
+      try {
+        const data = await getMentList()
+        const foundItem = data.find((item: any) => String(item.mentId) === id)
+        
+        if (foundItem) {
+          // contentLo JSON 파싱
+          let parsedLo = ''
+          if (foundItem.contentLo) {
+            try {
+              const parsed = JSON.parse(foundItem.contentLo)
+              parsedLo = parsed.번역 || parsed.translation || foundItem.contentLo
+            } catch {
+              parsedLo = foundItem.contentLo
+            }
+          }
+          
+          const converted: Ment = {
+            id: String(foundItem.mentId),
+            ko: foundItem.contentKo,
+            lo: parsedLo,
+            tags: foundItem.tag ? foundItem.tag.split(',').map((t: string) => t.trim()) : [],
+            aiHint: '',
+            status: (foundItem.isApproved === 1 ? 'approved' : 'pending') as MentStatus,
+            createdAt: new Date(foundItem.createdAt).getTime()
+          }
+          setMent(converted)
+        }
+      } catch (error) {
+        console.error('멘트 불러오기 실패:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchMent()
   }, [id])
 
-  const [isPlaying, setIsPlaying] = useState(false)
-
-  useEffect(() => {
-    return () => {
-      // cleanup no-op (timeout is short and stateful)
+  async function handleApprove() {
+    if (!ment || isProcessing) return
+    
+    setIsProcessing(true)
+    setError(null)
+    try {
+      await approveMent(Number(ment.id))
+      setSuccessMessage(t('ment.approveSuccess'))
+      setTimeout(() => navigate(ROUTES.MENTS), 1500)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('ment.approveFailed'))
+    } finally {
+      setIsProcessing(false)
     }
-  }, [])
+  }
+
+  async function handleRejectConfirm() {
+    if (!ment || isProcessing) return
+    
+    const reason = rejectReason.trim()
+    if (!reason) {
+      setError('거절 사유를 입력해주세요.')
+      return
+    }
+
+    setIsProcessing(true)
+    setError(null)
+    try {
+      await rejectMent(Number(ment.id), reason)
+      setSuccessMessage(t('ment.rejectSuccess'))
+      setTimeout(() => navigate(ROUTES.MENTS), 1500)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('ment.rejectFailed'))
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <PageContainer>
+        <Header title={t('ment.detail')} backTo={ROUTES.MENTS} />
+        <Main>
+          <Card>
+            <p className="text-sm text-slate-600">{t('common.loading')}</p>
+          </Card>
+        </Main>
+      </PageContainer>
+    )
+  }
 
   if (!ment) {
     return (
-      <div className="h-full bg-gradient-to-b from-pink-50 to-purple-50">
-        <div className="mx-auto flex h-full max-w-[480px] flex-col">
-          <header className="sticky top-0 z-10 border-b border-pink-100 bg-gradient-to-b from-pink-50/90 to-purple-50/70 px-4 py-4 backdrop-blur">
-            <div className="flex items-center gap-2">
-              <Link
-                to="/ments"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-pink-200 bg-white"
-              >
-                <ChevronLeft className="h-5 w-5 text-slate-700" />
-              </Link>
-              <h1 className="text-base font-semibold text-slate-900">멘트 상세</h1>
-            </div>
-          </header>
-          <main className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
-            <div className="rounded-2xl border border-pink-100 bg-white p-4 text-sm text-slate-600 shadow-sm">
-              멘트를 찾을 수 없어요.
-            </div>
-          </main>
-        </div>
-      </div>
+      <PageContainer>
+        <Header title={t('ment.detail')} backTo={ROUTES.MENTS} />
+        <Main>
+          <Card>
+            <p className="text-sm text-slate-600">{t('ment.mentNotFound')}</p>
+          </Card>
+        </Main>
+      </PageContainer>
     )
   }
 
   if (!isAdmin && ment.status !== 'approved') {
     return (
-      <div className="h-full bg-gradient-to-b from-pink-50 to-purple-50">
-        <div className="mx-auto flex h-full max-w-[480px] flex-col">
-          <header className="sticky top-0 z-10 border-b border-pink-100 bg-gradient-to-b from-pink-50/90 to-purple-50/70 px-4 py-4 backdrop-blur">
-            <div className="flex items-center gap-2">
-              <Link
-                to="/ments"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-pink-200 bg-white"
-              >
-                <ChevronLeft className="h-5 w-5 text-slate-700" />
-              </Link>
-              <h1 className="text-base font-semibold text-slate-900">멘트 상세</h1>
-            </div>
-          </header>
-          <main className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
-            <div className="rounded-2xl border border-pink-100 bg-white p-4 text-sm text-slate-600 shadow-sm">
-              승인 대기 중인 멘트예요. 관리자 승인 후 노출됩니다.
-            </div>
-          </main>
-        </div>
-      </div>
+      <PageContainer>
+        <Header title={t('ment.detail')} backTo={ROUTES.MENTS} />
+        <Main>
+          <Card>
+            <p className="text-sm text-slate-600">
+              {t('ment.pendingApproval')}
+            </p>
+          </Card>
+        </Main>
+      </PageContainer>
     )
   }
 
+  const isPending = ment.status === 'pending'
+
   return (
-    <div className="h-full bg-gradient-to-b from-pink-50 to-purple-50">
-      <div className="mx-auto flex h-full max-w-[480px] flex-col">
-        <header className="sticky top-0 z-10 border-b border-pink-100 bg-gradient-to-b from-pink-50/90 to-purple-50/70 px-4 py-4 backdrop-blur">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Link
-                to="/ments"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-pink-200 bg-white"
-              >
-                <ChevronLeft className="h-5 w-5 text-slate-700" />
-              </Link>
-              <h1 className="text-base font-semibold text-slate-900">멘트 상세</h1>
+    <PageContainer>
+      <Header
+        title={t('ment.detail')}
+        backTo={ROUTES.MENTS}
+      />
+
+      <Main>
+        {error && (
+          <Alert variant="error" className="mb-4">
+            {error}
+          </Alert>
+        )}
+        
+        {successMessage && (
+          <Alert variant="success" className="mb-4">
+            {successMessage}
+          </Alert>
+        )}
+
+        <Card>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {/* 한국어 */}
+            <div className="rounded-2xl bg-pink-50 p-4">
+              <p className="text-xs font-semibold text-pink-700">{t('ment.korean')}</p>
+              <p className="mt-2 text-base font-semibold text-slate-900">{ment.ko}</p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                if (isPlaying) return
-                setIsPlaying(true)
-                window.setTimeout(() => setIsPlaying(false), 1500)
-              }}
-              className={cx(
-                'inline-flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold shadow-sm',
-                isPlaying ? 'bg-purple-600 text-white' : 'bg-white text-slate-700',
-                'border border-pink-200'
-              )}
-            >
-              {isPlaying ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-white" />
-                  재생 중...
-                </span>
+            {/* 라오스어 */}
+            <div className="rounded-2xl bg-purple-50 p-4">
+              <p className="text-xs font-semibold text-purple-700">{t('ment.lao')}</p>
+              {ment.lo ? (
+                <p className="mt-2 text-base font-semibold text-slate-900">{ment.lo}</p>
               ) : (
-                <span className="inline-flex items-center gap-2">
-                  <Volume2 className="h-5 w-5" />
-                  듣기
-                </span>
+                <p className="mt-2 text-sm text-slate-400">{t('ment.noTranslation')}</p>
               )}
-            </button>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
-          <div className="rounded-2xl border border-pink-100 bg-white p-4 shadow-sm">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-pink-50 p-4">
-                <p className="text-xs font-semibold text-pink-700">한국어</p>
-                <p className="mt-2 text-base font-semibold text-slate-900">{ment.ko}</p>
-              </div>
-              <div className="rounded-2xl bg-purple-50 p-4">
-                <p className="text-xs font-semibold text-purple-700">라오어</p>
-                <p className="mt-2 text-base font-medium text-slate-800">{ment.lo}</p>
-              </div>
             </div>
+          </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {ment.tags.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full bg-pink-50 px-3 py-1 text-xs font-medium text-pink-700"
+          {/* 태그 목록 */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {ment.tags.map((t) => (
+              <Tag key={t} label={translateTag(t, i18n.language as 'ko' | 'lo')} variant="pink" clickable={false} />
+            ))}
+            {isAdmin && (
+              <Tag label={`status: ${ment.status}`} variant="slate" clickable={false} showHash={false} />
+            )}
+          </div>
+        </Card>
+
+        {/* 관리자 승인/거절 영역 */}
+        {isAdmin && isPending && (
+          <Card className="mt-4">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">{t('ment.adminAction')}</h3>
+            
+            {!showRejectInput ? (
+              <div className="flex gap-3">
+                <Button
+                  variant="success"
+                  onClick={handleApprove}
+                  disabled={isProcessing}
+                  className="flex-1"
+                  leftIcon={isProcessing ? <Spinner size="sm" /> : <Check className="h-5 w-5" />}
                 >
-                  #{t}
-                </span>
-              ))}
-              {isAdmin && (
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                  status: {ment.status}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* <div className="mt-4 rounded-2xl border border-purple-100 bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold text-purple-700">AI 한 줄 설명</p>
-            <p className="mt-2 text-sm leading-6 text-slate-700">{ment.aiHint}</p>
-          </div> */}
-        </main>
-      </div>
-    </div>
+                  {isProcessing ? t('common.loading') : t('ment.approve')}
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() => setShowRejectInput(true)}
+                  disabled={isProcessing}
+                  className="flex-1"
+                  leftIcon={<X className="h-5 w-5" />}
+                >
+                  {t('ment.reject')}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    {t('ment.rejectReason')}
+                  </label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder={t('ment.enterRejectReason')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                    rows={4}
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="danger"
+                    onClick={handleRejectConfirm}
+                    disabled={isProcessing || !rejectReason.trim()}
+                    className="flex-1"
+                    leftIcon={isProcessing ? <Spinner size="sm" /> : undefined}
+                  >
+                    {isProcessing ? t('common.loading') : t('ment.confirmReject')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setShowRejectInput(false)
+                      setRejectReason('')
+                      setError(null)
+                    }}
+                    disabled={isProcessing}
+                    className="flex-1"
+                  >
+                    {t('common.cancel')}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+      </Main>
+    </PageContainer>
   )
 }
