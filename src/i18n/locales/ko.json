@@ -41,7 +41,16 @@
     "alreadyExistEmail": "이미 사용 중인 이메일입니다.",
     "signupRequestError": "회원가입 요청 중 오류가 발생했습니다.",
     "loginRequestError": "로그인 요청 중 오류가 발생했습니다.",
-    "or": "또는"
+    "or": "또는",
+    "tokenExpired": "토큰이 만료되었습니다.",
+    "sessionExpired": "세션이 만료되었습니다.",
+    "apiRequestFailed": "API 요청에 실패했습니다.",
+    "tokenRefreshFailed": "토큰 갱신에 실패했습니다.",
+    "oauthFailed": "OAuth 인증에 실패했습니다.",
+    "noAccessToken": "액세스 토큰이 없습니다.",
+    "invalidAccessToken": "백엔드 응답에 액세스 토큰이 없습니다.",
+    "allFieldsRequired": "모든 필드를 입력해 주세요.",
+    "userIdMinLength": "아이디는 3자 이상이어야 합니다."
   },
   "ment": {
     "list": "멘트 목록",
@@ -84,7 +93,11 @@
     "oneItem": "1개",
     "pendingApproval": "승인 대기 중인 멘트예요. 관리자 승인 후 노출됩니다.",
     "adminMode": "관리자 모드: 전체/승인/대기/거절 표시",
-    "userMode": "사용자 모드: 승인된 멘트만 표시"
+    "userMode": "사용자 모드: 승인된 멘트만 표시",
+    "loadingMentsFailed": "멘트를 불러오는데 실패했습니다.",
+    "invalidMentId": "잘못된 멘트 ID입니다.",
+    "bookmarkAddFailed": "북마크 추가 실패",
+    "bookmarkRemoveFailed": "북마크 삭제 실패"
   },
   "settings": {
     "settings": "설정",

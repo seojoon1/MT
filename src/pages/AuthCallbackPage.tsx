@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { jwtDecode } from 'jwt-decode'
 import { exchangeCodeForToken } from '../services/api'
 import { setAuthed, getOAuthState, clearOAuthState } from '../storage/authStorage'
+import { errorMessageMap } from '../utils/errorMessageMap'
 import { ROUTES } from '../constants'
 
 /**
@@ -15,6 +17,7 @@ import { ROUTES } from '../constants'
 export default function AuthCallbackPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -30,21 +33,21 @@ export default function AuthCallbackPage() {
 
       // 2. OAuth 에러 확인
       if (oauthError) {
-        throw new Error(`OAuth 인증 실패: ${oauthError}`)
+        throw new Error('OAUTH_FAILED')
       }
 
       // 3. 인증 코드 확인
       if (!code) {
-        throw new Error('인증 코드가 없습니다.')
+        throw new Error('OAuth code not found')
       }
 
       // 4. State 검증 (CSRF 방지)
       const savedState = getOAuthState()
       if (!state || !savedState || state !== savedState) {
-        throw new Error('State 검증 실패: CSRF 공격 가능성이 있습니다.')
+        throw new Error('CSRF validation failed')
       }
 
-      console.log('✅ State 검증 성공')
+      console.log('✅ State validation successful')
 
       // 5. 백엔드로 인증 코드 전송 및 토큰 수신
       const { accessToken, refreshToken } = await exchangeCodeForToken(code)
@@ -53,7 +56,7 @@ export default function AuthCallbackPage() {
       const decoded = jwtDecode<{ email?: string; sub?: string }>(accessToken)
       const email = decoded.email || decoded.sub || 'unknown@example.com'
 
-      console.log('✅ JWT 디코딩 성공:', { email })
+      console.log('✅ JWT decoded:', { email })
 
       // 7. 인증 정보 저장
       setAuthed(
@@ -71,11 +74,18 @@ export default function AuthCallbackPage() {
       clearOAuthState()
 
       // 9. 메인 페이지로 이동
-      console.log('✅ 로그인 성공, 메인 페이지로 이동')
+      console.log('✅ Login successful, redirecting to main page')
       navigate(ROUTES.MENTS, { replace: true })
     } catch (err) {
-      console.error('❌ OAuth 콜백 처리 오류:', err)
-      setError(err instanceof Error ? err.message : 'OAuth 인증 처리 중 오류가 발생했습니다.')
+      console.error('❌ OAuth callback processing error:', err)
+      
+      // 에러 메시지를 i18n 키로 변환
+      let errorMessage = t('auth.oauthFailed')
+      if (err instanceof Error) {
+        const i18nKey = errorMessageMap[err.message]
+        errorMessage = i18nKey ? t(i18nKey) : err.message
+      }
+      setError(errorMessage)
       clearOAuthState()
     }
   }

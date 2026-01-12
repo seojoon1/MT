@@ -41,7 +41,16 @@
     "alreadyExistEmail": "ອີເມລນີ້ຖືກນໍາໃຊ້ແລ້ວ.",
     "signupRequestError": "ເກີດຂໍ້ຜິດພາດໃນຂະນະທີ່ລົງທະບຽນ.",
     "loginRequestError": "ເກີດຂໍ້ຜິດພາດໃນຂະນະທີ່ເຂົ້າສູ່ລະບົບ.",
-    "or": "ຫຼືອື່ນໆ"
+    "or": "ຫຼືອື່ນໆ",
+    "tokenExpired": "ໂທກັນໄດ້ຫมົດອາຍຸ.",
+    "sessionExpired": "ເຊຊັນໄດ້ຫມົດອາຍຸ.",
+    "apiRequestFailed": "ຄຳຮ້ອງສະຫຼອກ API ລົ້ມເຫລວ.",
+    "tokenRefreshFailed": "ການປັບປຸງໂທກັນລົ້ມເຫລວ.",
+    "oauthFailed": "OAuth ບໍ່ສຳເລັດ.",
+    "noAccessToken": "ບໍ່ມີໂທກັນໄວ້ເຂົ້າເຖິງ.",
+    "invalidAccessToken": "ບໍ່ມີໂທກັນໄວ້ເຂົ້າເຖິງໃນການຕອບກັບຂອງ backend.",
+    "allFieldsRequired": "ກະລຸນາປ້ອນຕົວເລືອກທັງໝົດ.",
+    "userIdMinLength": "ID ຜູ້ໃຊ້ຕ້ອງມີ 3 ຕົວອັກສອນຂຶ້ນໄປ."
   },
   "ment": {
     "list": "ລາຍຊື່ປະໂຫຍກ",
@@ -84,7 +93,11 @@
     "oneItem": "1 ລາຍການ",
     "pendingApproval": "ປະໂຫຍກກຳລັງລໍຖ້າການອະນຸມັດ. ຈະສະແດງຫຼັງຈາກຜູ້ບໍລິຫານອະບຸມັດ",
     "adminMode": "ໂຫມດຜູ້ບໍລິຫານ: ສະແດງທັງຫມົດ",
-    "userMode": "ໂຫມດຜູ້ໃຊ້: ສະແດງເຉພາະທີ່ອະນຸມັດແລ້ວ"
+    "userMode": "ໂຫມດຜູ້ໃຊ້: ສະແດງເຉພາະທີ່ອະນຸມັດແລ້ວ",
+    "loadingMentsFailed": "ບໍ່ສາມາດໂຫລດປະໂຫຍກໄດ້.",
+    "invalidMentId": "ID ປະໂຫຍກບໍ່ຖືກຕ້ອງ.",
+    "bookmarkAddFailed": "ບໍ່ສາມາດເພີ່ມບຸກມາກໄດ້.",
+    "bookmarkRemoveFailed": "ບໍ່ສາມາດລົບບຸກມາກໄດ້."
   },
   "settings": {
     "settings": "ການຕັ້ງຄ່າ",

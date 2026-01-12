@@ -1,6 +1,6 @@
 import axios, { AxiosHeaders, type AxiosInstance, type AxiosRequestHeaders, type InternalAxiosRequestConfig } from 'axios'
 import { getAuthedToken, getRefreshToken, clearAuthed, updateTokens } from '../storage/authStorage'
-import type { AuthResponse, MentItem, TranslateResponse, ApiInit, FavoriteItem, BookmarkItem, LoginPayload, RegisterPayload, RefreshTokenPayload, AddCommentPayload, RejectMentPayload, TranslatePayload } from '../types'
+import type { AuthResponse, MentItem, TranslateResponse, ApiInit, BookmarkItem, LoginPayload, RegisterPayload, RefreshTokenPayload, AddCommentPayload, TranslatePayload } from '../types'
 
 // Axios config에 커스텀 플래그 추가를 위한 타입 확장
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
@@ -9,12 +9,12 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 }
 
 // 기존 코드 호환성을 위해 re-export
-export type { AuthResponse, MentItem, TranslateResponse, FavoriteItem, BookmarkItem, LoginPayload, RegisterPayload, AddCommentPayload, RejectMentPayload, TranslatePayload }
+export type { AuthResponse, MentItem, TranslateResponse, BookmarkItem, LoginPayload, RegisterPayload, AddCommentPayload, TranslatePayload }
 
 function ensureApiBase(): string { //base URL 결정
   const base = import.meta.env.VITE_API_BASE_URL as string | undefined
 
-  if (!base) throw new Error('VITE_API_BASE_URL이 설정되지 않았습니다.')
+  if (!base) throw new Error('VITE_API_BASE_URL environment variable is not set')
   return base
 }
 function createClient(baseURL: string): AxiosInstance { // Axios 인스턴스 생성
@@ -43,13 +43,13 @@ function createClient(baseURL: string): AxiosInstance { // Axios 인스턴스 �
         try {
           const refreshToken = getRefreshToken()
           if (!refreshToken) {
-            console.error('리프레시 토큰 없음 - 로그아웃 처리')
+            console.error('No refresh token - logging out')
             clearAuthed()
             window.location.href = '/login'
-            return Promise.reject(error)
+            return Promise.reject(new Error('SESSION_EXPIRED'))
           }
 
-          console.log('액세스 토큰 갱신 시도...')
+          console.log('Attempting to refresh access token...')
           
           // refresh token으로 새로운 access token 요청
           const response = await axios.post(
@@ -64,10 +64,10 @@ function createClient(baseURL: string): AxiosInstance { // Axios 인스턴스 �
           const { accessToken, refreshToken: newRefreshToken } = response.data
 
           if (!accessToken) {
-            throw new Error('새로운 액세스 토큰을 받지 못했습니다.')
+            throw new Error('TOKEN_REFRESH_FAILED')
           }
 
-          console.log('토큰 갱신 성공')
+          console.log('Token refresh successful')
 
           // 새로운 토큰 저장
           updateTokens(accessToken, newRefreshToken || refreshToken)
@@ -78,10 +78,10 @@ function createClient(baseURL: string): AxiosInstance { // Axios 인스턴스 �
           // 원래 요청 재시도
           return client(originalRequest)
         } catch (refreshError) {
-          console.error('토큰 갱신 실패:', refreshError)
+          console.error('Token refresh failed:', refreshError)
           clearAuthed()
           window.location.href = '/login'
-          return Promise.reject(refreshError)
+          return Promise.reject(new Error('TOKEN_REFRESH_FAILED'))
         }
       }
 
@@ -121,13 +121,14 @@ async function apiRequest<T>(path: string, init: ApiInit = {}): Promise<T> {
     return res.data
   } catch (err) {
     if (axios.isAxiosError(err)) {
+      // 서버에서 제공한 에러 메시지 우선, 없으면 에러 코드 사용
       const message =
         typeof err.response?.data === 'object' && err.response?.data !== null && 'message' in (err.response?.data as object)
           ? String((err.response?.data as { message?: unknown }).message)
-          : err.message || 'API 요청에 실패했습니다.'
+          : err.message || 'API_REQUEST_FAILED'
       throw new Error(message)
     }
-    throw err instanceof Error ? err : new Error('API 요청에 실패했습니다.')
+    throw err instanceof Error ? err : new Error('API_REQUEST_FAILED')
   }
 }
 
@@ -173,13 +174,13 @@ export async function exchangeCodeForToken(code: string): Promise<AuthResponse> 
     })
     
     if (!response.accessToken) {
-      throw new Error('백엔드 응답에 accessToken이 없습니다.')
+      throw new Error('INVALID_ACCESS_TOKEN')
     }
     
     return response
   } catch (error) {
-    console.error('❌ OAuth 토큰 교환 실패:', error)
-    throw error instanceof Error ? error : new Error('OAuth 토큰 교환에 실패했습니다.')
+    console.error('OAuth token exchange failed:', error)
+    throw error instanceof Error ? error : new Error('OAUTH_FAILED')
   }
 }
 
@@ -196,24 +197,7 @@ export async function addComment(payload: AddCommentPayload): Promise<{ tag: str
 }
 
 // 즐겨찾기 목록 조회
-export async function getFavorites(): Promise<FavoriteItem[]> {
-  return apiRequest<FavoriteItem[]>('/favorite-list', { method: 'GET' })
-}
 
-// 즐겨찾기 추가
-export async function addFavorite(mentNum: number): Promise<{ message?: string }> {
-  return apiRequest<{ message?: string }>('/add-favorite', { 
-    method: 'POST', 
-    body: { mentNum } 
-  })
-}
-
-// 즐겨찾기 삭제
-export async function removeFavorite(favoriteNum: number): Promise<{ message?: string }> {
-  return apiRequest<{ message?: string }>(`/delete-favorite/${favoriteNum}`, { 
-    method: 'DELETE' 
-  })
-}
 
 export async function translateComment(payload: TranslatePayload): Promise<string> {
   // 한국어 → 라오스어 번역

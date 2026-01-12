@@ -103,12 +103,12 @@ export default function LoginPage() {
     const confirm = signupPasswordConfirm
 
     if (!localId || !email || !username || !password || !confirm) {
-      setError('모든 필드를 입력해 주세요.')
+      setError(t('auth.allFieldsRequired'))
       return
     }
 
     if (localId.length < 3) {
-      setError('아이디는 3자 이상이어야 합니다.')
+      setError(t('auth.userIdMinLength'))
       return
     }
 

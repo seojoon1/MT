@@ -29,14 +29,10 @@ export default function MentListPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [processingId, setProcessingId] = useState<string | null>(null)
-  const [rejectingId, setRejectingId] = useState<string | null>(null)
-  const [rejectReason, setRejectReason] = useState<Record<string, string>>({})
-  const [hasAdminPermission, setHasAdminPermission] = useState<boolean>(false)
 
   // 어드민 권한 체크
   useEffect(() => {
     const adminStatus = checkIsAdmin()
-    setHasAdminPermission(adminStatus)
     setIsAdminState(adminStatus)
   }, [])
 
@@ -94,8 +90,8 @@ export default function MentListPage() {
           }
         }
       } catch (err) {
-        console.error('멘트 목록 불러오기 실패:', err)
-        setError(err instanceof Error ? err.message : '멘트를 불러오는데 실패했습니다.')
+        console.error('Failed to load ments:', err)
+        setError(err instanceof Error ? err.message : t('ment.loadingMentsFailed'))
       } finally {
         setLoading(false)
       }
@@ -153,7 +149,7 @@ export default function MentListPage() {
     try {
       const mentId = Number(id)
       if (isNaN(mentId)) {
-        setError('잘못된 멘트 ID입니다.')
+        setError(t('ment.invalidMentId'))
         return
       }
       
@@ -173,8 +169,8 @@ export default function MentListPage() {
       
       setError(null)
     } catch (err) {
-      console.error(isBookmarked ? '북마크 삭제 실패:' : '북마크 추가 실패:', err)
-      setError(err instanceof Error ? err.message : isBookmarked ? '북마크 삭제 실패' : '북마크 추가 실패')
+      console.error(isBookmarked ? 'Bookmark removal failed:' : 'Bookmark addition failed:', err)
+      setError(err instanceof Error ? err.message : isBookmarked ? t('ment.bookmarkRemoveFailed') : t('ment.bookmarkAddFailed'))
     }
   }
 
@@ -197,25 +193,9 @@ export default function MentListPage() {
       setMentsState(convertedMents)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '승인 실패')
+      setError(err instanceof Error ? err.message : t('ment.approveFailed'))
     } finally {
       setProcessingId(null)
-    }
-  }
-
-  async function handleReject(e: React.MouseEvent, id: string) {
-    e.stopPropagation()
-    if (rejectingId === id) {
-      // 토글 - 닫기
-      setRejectingId(null)
-      setRejectReason((prev) => {
-        const updated = { ...prev }
-        delete updated[id]
-        return updated
-      })
-    } else {
-      // 토글 - 열기
-      setRejectingId(id)
     }
   }
 
@@ -237,22 +217,12 @@ export default function MentListPage() {
         createdAt: new Date(item.createdAt).getTime()
       }))
       setMentsState(convertedMents)
-      setRejectingId(null)
-      setRejectReason((prev) => {
-        const updated = { ...prev }
-        delete updated[id]
-        return updated
-      })
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '거절 실패')
+      setError(err instanceof Error ? err.message : t('ment.rejectFailed'))
     } finally {
       setProcessingId(null)
     }
-  }
-
-  function handleRejectReasonChange(id: string, value: string) {
-    setRejectReason((prev) => ({ ...prev, [id]: value }))
   }
 
   return (
@@ -277,7 +247,7 @@ export default function MentListPage() {
                 <Settings className="h-5 w-5" />
               </button>
 
-              {hasAdminPermission && (
+              {isAdmin && (
                 <button
                   type="button"
                   onClick={() => setIsAdminState((v) => !v)}
@@ -440,39 +410,14 @@ export default function MentListPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={(e) => handleReject(e, m.id)}
-                            disabled={processingId !== null}
+                            onClick={(e) => handleRejectConfirm(e, m.id, Number(m.id))}
+                            disabled={processingId === m.id}
                             className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-pink-200 bg-white text-sm font-semibold text-slate-700 disabled:opacity-50"
                           >
                             <Trash2 className="h-5 w-5" />
-                            {rejectingId === m.id ? t('common.cancel') : t('ment.reject')}
+                            {processingId === m.id ? t('common.loading') : t('ment.reject')}
                           </button>
                         </div>
-
-                        {rejectingId === m.id && (
-                          <div className="mt-3 space-y-2 animate-in slide-in-from-top-2">
-                            <label className="block text-sm font-medium text-slate-700">
-                              {t('ment.rejectReason')}
-                            </label>
-                            <textarea
-                              value={rejectReason[m.id] || ''}
-                              onChange={(e) => handleRejectReasonChange(m.id, e.target.value)}
-                              placeholder={t('ment.enterRejectReason')}
-                              className="w-full px-3 py-2 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-sm"
-                              rows={3}
-                              autoFocus
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => handleRejectConfirm(e, m.id, Number(m.id))}
-                              disabled={processingId === m.id || !rejectReason[m.id]?.trim()}
-                              className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-600 text-sm font-semibold text-white disabled:opacity-50"
-                            >
-                              {processingId === m.id ? t('common.loading') : t('ment.confirmReject')}
-                            </button>
-                          </div>
-                        )}
                       </>
                     )}
                   </div>

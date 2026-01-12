@@ -18,7 +18,6 @@ export default function MentDetailPage() {
   const [ment, setMent] = useState<Ment | null>(null)
   const [loading, setLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [showRejectInput, setShowRejectInput] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -103,7 +102,6 @@ export default function MentDetailPage() {
       setError(err instanceof Error ? err.message : t('ment.rejectFailed'))
     } finally {
       setIsProcessing(false)
-      setShowRejectInput(false)
     }
   }
 
@@ -205,28 +203,26 @@ export default function MentDetailPage() {
           <Card className="mt-4">
             <h3 className="text-lg font-semibold text-slate-900 mb-4">{t('ment.adminAction')}</h3>
             
-            {!showRejectInput ? (
-              <div className="flex gap-3">
-                <Button
-                  variant="success"
-                  onClick={handleApprove}
-                  disabled={isProcessing}
-                  className="flex-1"
-                  leftIcon={isProcessing ? <Spinner size="sm" /> : <Check className="h-5 w-5" />}
-                >
-                  {isProcessing ? t('common.loading') : t('ment.approve')}
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={handleRejectConfirm}
-                  disabled={isProcessing}
-                  className="flex-1"
-                  leftIcon={isProcessing ? <Spinner size="sm" /> : <X className="h-5 w-5" />}
-                >
-                  {isProcessing ? t('common.loading') : t('ment.reject')}
-                </Button>
-              </div>
-            ) : null}
+            <div className="flex gap-3">
+              <Button
+                variant="success"
+                onClick={handleApprove}
+                disabled={isProcessing}
+                className="flex-1"
+                leftIcon={isProcessing ? <Spinner size="sm" /> : <Check className="h-5 w-5" />}
+              >
+                {isProcessing ? t('common.loading') : t('ment.approve')}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleRejectConfirm}
+                disabled={isProcessing}
+                className="flex-1"
+                leftIcon={isProcessing ? <Spinner size="sm" /> : <X className="h-5 w-5" />}
+              >
+                {isProcessing ? t('common.loading') : t('ment.reject')}
+              </Button>
+            </div>
           </Card>
         )}
       </Main>

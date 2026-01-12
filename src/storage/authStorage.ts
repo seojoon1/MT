@@ -4,7 +4,7 @@ import type { AuthedProfile } from '../types'
 // 기존 코드 호환성을 위해 re-export
 export type { AuthedProfile }
 
-// [핵심 변경 1] Access Token은 보안을 위해 '메모리 변수'에만 저장합니다.
+// Access Token은 보안을 위해 '메모리 변수'에만 저장합니다.
 let _accessToken: string | null = null;
 
 export function getAccessToken(): string | null {
@@ -15,11 +15,11 @@ export function setAccessToken(token: string | null): void {
   _accessToken = token;
 }
 
-// [핵심 변경 2] 로그인 처리: Access -> 메모리, Refresh/Profile -> 로컬 스토리지
+// Access Token을 메모리 변수에만 저장
 export function setAuthed(profile: AuthedProfile, tokens?: { accessToken?: string, refreshToken?: string }): void {
   console.log('setAuthed 호출:', { profile, tokens })
 
-  // 1. 사용자 정보는 로컬스토리지 (새로고침/재접속 시 UX 유지를 위해)
+  // 사용자 정보 로컬 스토리지에 저장
   localStorage.setItem(STORAGE_KEYS.auth.localId, profile.localId)
   localStorage.setItem(STORAGE_KEYS.auth.username, profile.username)
   
@@ -27,7 +27,6 @@ export function setAuthed(profile: AuthedProfile, tokens?: { accessToken?: strin
     localStorage.setItem(STORAGE_KEYS.auth.userNum, String(profile.userNum))
   }
 
-  // 2. Access Token은 메모리 변수에 저장 (스토리지 저장 X)
   if (tokens?.accessToken) {
     _accessToken = tokens.accessToken;
     console.log('Access 토큰 메모리 저장 완료');
@@ -35,7 +34,7 @@ export function setAuthed(profile: AuthedProfile, tokens?: { accessToken?: strin
     _accessToken = null;
   }
 
-  // 3. Refresh Token은 로컬스토리지 (자동 로그인을 위해)
+  //refreshToken로컬 스토리지에 저장
   if (tokens?.refreshToken) {
     localStorage.setItem(STORAGE_KEYS.auth.refreshToken || 'auth_refreshToken', tokens.refreshToken)
   }

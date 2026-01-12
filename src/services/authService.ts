@@ -29,10 +29,8 @@ export function buildGoogleAuthorizeUrl(state: string): string {
     throw new Error('VITE_GOOGLE_CLIENT_ID 환경변수가 설정되지 않았습니다.')
   }
 
-  // redirect_uri는 환경변수에서 가져오거나 자동 생성
-  const redirectUri =
-    import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
-    `${window.location.origin}/auth/callback`
+  // redirect_uri는 현재 포트 기반으로 생성
+  const redirectUri =`${window.location.origin}/auth/callback`
 
   const params = new URLSearchParams({
     client_id: clientId,

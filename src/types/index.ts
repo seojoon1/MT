@@ -86,24 +86,11 @@ export type AddCommentPayload = {
   tag: string
 }
 
-export type RejectMentPayload = {
-  reason: string
-}
-
 export type TranslatePayload = {
   comment: string
 }
 
-/** 즐겨찾기 아이템 타입 */
-export type FavoriteItem = {
-  favoriteNum: number
-  mentNum: number
-  comment: string
-  mentTag: string
-  createdAt?: string
-}
-
-/** 북마크 아이템 타입 */
+/** 즐겨찾기/북마크 아이템 타입 */
 export type BookmarkItem = {
   bookmarkNum: number
   mentNum: number
