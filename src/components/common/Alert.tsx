@@ -1,13 +1,5 @@
-import type { ReactNode } from 'react'
+import type { AlertProps, AlertVariant } from '../../types'
 import { cn } from '../../utils/cn'
-
-type AlertVariant = 'error' | 'warning' | 'success' | 'info'
-
-interface AlertProps {
-  children: ReactNode
-  variant?: AlertVariant
-  className?: string
-}
 
 const variantStyles: Record<AlertVariant, string> = {
   error: 'border-pink-200 bg-pink-50 text-pink-700',

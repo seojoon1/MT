@@ -1,6 +1,6 @@
 import axios, { AxiosHeaders, type AxiosInstance, type AxiosRequestHeaders, type InternalAxiosRequestConfig } from 'axios'
 import { getAuthedToken, getRefreshToken, clearAuthed, updateTokens } from '../storage/authStorage'
-import type { AuthResponse, MentItem, TranslateResponse, ApiInit } from '../types'
+import type { AuthResponse, MentItem, TranslateResponse, ApiInit, FavoriteItem, BookmarkItem, LoginPayload, RegisterPayload, RefreshTokenPayload, AddCommentPayload, RejectMentPayload, TranslatePayload } from '../types'
 
 // Axios config에 커스텀 플래그 추가를 위한 타입 확장
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
@@ -9,13 +9,10 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 }
 
 // 기존 코드 호환성을 위해 re-export
-export type { AuthResponse, MentItem, TranslateResponse }
+export type { AuthResponse, MentItem, TranslateResponse, FavoriteItem, BookmarkItem, LoginPayload, RegisterPayload, AddCommentPayload, RejectMentPayload, TranslatePayload }
 
 function ensureApiBase(): string { //base URL 결정
-  const useRemote = String(import.meta.env.VITE_API_BASE_URL_FORCE_REMOTE ?? '').toLowerCase() === 'true'
-  const base = import.meta.env.DEV && !useRemote
-    ? '/api'
-    : import.meta.env.VITE_API_BASE_URL as string | undefined
+  const base = import.meta.env.VITE_API_BASE_URL as string | undefined
 
   if (!base) throw new Error('VITE_API_BASE_URL이 설정되지 않았습니다.')
   return base
@@ -134,29 +131,20 @@ async function apiRequest<T>(path: string, init: ApiInit = {}): Promise<T> {
   }
 }
 
-export async function postLogin(payload: {
-    localId: string; 
-    password: string 
-}): Promise<AuthResponse> {
+export async function postLogin(payload: LoginPayload): Promise<AuthResponse> {
   // 로컬(이메일/비번) 로그인 엔드포인트
   return apiRequest<AuthResponse>('/login', { method: 'POST', body: payload, skipAuth: true })
 }
 
-export async function postRegister(payload: {
-  localId: string
-  password: string
-  nickname: string
-  email: string
-}): Promise<AuthResponse> { //로컬 회원가입
+export async function postRegister(payload: RegisterPayload): Promise<AuthResponse> {
+  //로컬 회원가입
   return apiRequest<AuthResponse>('/register', { method: 'POST', body: payload, skipAuth: true })
 }
 
-export async function refreshAccessToken(): Promise<AuthResponse> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) throw new Error('리프레시 토큰이 없습니다.')
+export async function refreshAccessToken(payload: RefreshTokenPayload): Promise<AuthResponse> {
   return apiRequest<AuthResponse>('/token/refresh', { 
     method: 'POST', 
-    body: { refreshToken },
+    body: payload,
     skipAuth: true 
   })
 }
@@ -171,15 +159,36 @@ export async function deletedAccount(): Promise<void> {
   await apiRequest<void>('/delete/user', { method: 'DELETE' })
 }
 
+/**
+ * Google OAuth 토큰 교환
+ * 인증 코드를 백엔드에 전송하여 accessToken과 refreshToken을 받음
+ * 주의: 이 요청은 로그인 전이므로 Authorization 헤더를 보내지 않음
+ */
+export async function exchangeCodeForToken(code: string): Promise<AuthResponse> {
+  try {
+    const response = await apiRequest<AuthResponse>('/oauth/callback/google', {
+      method: 'POST',
+      body: { code },
+      skipAuth: true,
+    })
+    
+    if (!response.accessToken) {
+      throw new Error('백엔드 응답에 accessToken이 없습니다.')
+    }
+    
+    return response
+  } catch (error) {
+    console.error('❌ OAuth 토큰 교환 실패:', error)
+    throw error instanceof Error ? error : new Error('OAuth 토큰 교환에 실패했습니다.')
+  }
+}
+
 export async function getMentList(): Promise<MentItem[]> {
   return apiRequest<MentItem[]>('/ment/list', { method: 'GET' })
 }
 
 // 멘트 추가 (원문만 전송)
-export async function addComment(payload: {
-  contentKo: string
-  tag: string
-}): Promise<{ tag: string; contentKo: string }> {
+export async function addComment(payload: AddCommentPayload): Promise<{ tag: string; contentKo: string }> {
   return apiRequest<{ tag: string; contentKo: string }>('/request/comment', { 
     method: 'POST', 
     body: payload 
@@ -187,14 +196,6 @@ export async function addComment(payload: {
 }
 
 // 즐겨찾기 목록 조회
-export type FavoriteItem = {
-  favorite_num: number
-  ment_num: number
-  comment: string
-  ment_tag: string
-  created_at?: string
-}
-
 export async function getFavorites(): Promise<FavoriteItem[]> {
   return apiRequest<FavoriteItem[]>('/favorite-list', { method: 'GET' })
 }
@@ -203,7 +204,7 @@ export async function getFavorites(): Promise<FavoriteItem[]> {
 export async function addFavorite(mentNum: number): Promise<{ message?: string }> {
   return apiRequest<{ message?: string }>('/add-favorite', { 
     method: 'POST', 
-    body: { ment_num: mentNum } 
+    body: { mentNum } 
   })
 }
 
@@ -214,9 +215,7 @@ export async function removeFavorite(favoriteNum: number): Promise<{ message?: s
   })
 }
 
-export async function translateComment(payload: {
-  comment: string
-}): Promise<string> {
+export async function translateComment(payload: TranslatePayload): Promise<string> {
   // 한국어 → 라오스어 번역
   const response = await apiRequest<TranslateResponse>('/translate', { 
     method: 'POST', 
@@ -249,25 +248,12 @@ export async function approveMent(mentId: number): Promise<{ message?: string }>
 }
 
 // 멘트 거절 (관리자 전용)
-export async function rejectMent(mentId: number, reason: string): Promise<{ message?: string }> {
+export async function rejectMent(mentId: number): Promise<{ message?: string }> {
   return apiRequest<{ message?: string }>(`/request/negative?mentId=${mentId}`, { 
-    method: 'POST',
-    body: { reason } 
+    method: 'POST'
   })
 }
-
 // ============================
-// 북마크 API
-// ============================
-
-// 북마크 아이템 타입
-export type BookmarkItem = {
-  bookmark_num: number
-  ment_num: number
-  comment: string
-  ment_tag: string
-  created_at?: string
-}
 
 // 북마크 추가
 export async function addBookmark(mentId: number): Promise<{ message?: string }> {

@@ -18,7 +18,6 @@ export default function AuthStartPage() {
 
       // 2. Redirect URI 결정
       const redirectUri =
-        import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
         `${window.location.origin}/auth/callback`
 
       // 3. State와 Redirect URI를 sessionStorage에 저장

@@ -6,7 +6,7 @@ import { translateTag } from '../i18n/tagTranslations'
 import { PageContainer, Header, Main, Card, Button, Tag, Spinner, Alert } from '../components'
 import { ROUTES } from '../constants'
 import { getMentList, approveMent, rejectMent } from '../services/api'
-import type { Ment, MentStatus } from '../types/ment'
+import type { Ment, MentStatus } from '../types'
 import { isAdmin as checkIsAdmin } from '../storage/authStorage'
 
 export default function MentDetailPage() {
@@ -19,7 +19,6 @@ export default function MentDetailPage() {
   const [loading, setLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
   const [showRejectInput, setShowRejectInput] = useState(false)
-  const [rejectReason, setRejectReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -93,23 +92,18 @@ export default function MentDetailPage() {
 
   async function handleRejectConfirm() {
     if (!ment || isProcessing) return
-    
-    const reason = rejectReason.trim()
-    if (!reason) {
-      setError('거절 사유를 입력해주세요.')
-      return
-    }
 
     setIsProcessing(true)
     setError(null)
     try {
-      await rejectMent(Number(ment.id), reason)
+      await rejectMent(Number(ment.id))
       setSuccessMessage(t('ment.rejectSuccess'))
       setTimeout(() => navigate(ROUTES.MENTS), 1500)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('ment.rejectFailed'))
     } finally {
       setIsProcessing(false)
+      setShowRejectInput(false)
     }
   }
 
@@ -224,54 +218,15 @@ export default function MentDetailPage() {
                 </Button>
                 <Button
                   variant="danger"
-                  onClick={() => setShowRejectInput(true)}
+                  onClick={handleRejectConfirm}
                   disabled={isProcessing}
                   className="flex-1"
-                  leftIcon={<X className="h-5 w-5" />}
+                  leftIcon={isProcessing ? <Spinner size="sm" /> : <X className="h-5 w-5" />}
                 >
-                  {t('ment.reject')}
+                  {isProcessing ? t('common.loading') : t('ment.reject')}
                 </Button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    {t('ment.rejectReason')}
-                  </label>
-                  <textarea
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                    placeholder={t('ment.enterRejectReason')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                    rows={4}
-                    autoFocus
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="danger"
-                    onClick={handleRejectConfirm}
-                    disabled={isProcessing || !rejectReason.trim()}
-                    className="flex-1"
-                    leftIcon={isProcessing ? <Spinner size="sm" /> : undefined}
-                  >
-                    {isProcessing ? t('common.loading') : t('ment.confirmReject')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setShowRejectInput(false)
-                      setRejectReason('')
-                      setError(null)
-                    }}
-                    disabled={isProcessing}
-                    className="flex-1"
-                  >
-                    {t('common.cancel')}
-                  </Button>
-                </div>
-              </div>
-            )}
+            ) : null}
           </Card>
         )}
       </Main>

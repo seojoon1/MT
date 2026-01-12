@@ -1,11 +1,5 @@
+import type { SpinnerProps, SpinnerSize } from '../../types'
 import { cn } from '../../utils/cn'
-
-type SpinnerSize = 'sm' | 'md' | 'lg'
-
-interface SpinnerProps {
-  size?: SpinnerSize
-  className?: string
-}
 
 const sizeStyles: Record<SpinnerSize, string> = {
   sm: 'h-4 w-4 border-2',

@@ -4,62 +4,89 @@ import type { AuthedProfile } from '../types'
 // 기존 코드 호환성을 위해 re-export
 export type { AuthedProfile }
 
+// [핵심 변경 1] Access Token은 보안을 위해 '메모리 변수'에만 저장합니다.
+let _accessToken: string | null = null;
+
+export function getAccessToken(): string | null {
+  return _accessToken;
+}
+
+export function setAccessToken(token: string | null): void {
+  _accessToken = token;
+}
+
+// [핵심 변경 2] 로그인 처리: Access -> 메모리, Refresh/Profile -> 로컬 스토리지
 export function setAuthed(profile: AuthedProfile, tokens?: { accessToken?: string, refreshToken?: string }): void {
   console.log('setAuthed 호출:', { profile, tokens })
-  sessionStorage.setItem(STORAGE_KEYS.auth.localId, profile.localId)
-  sessionStorage.setItem(STORAGE_KEYS.auth.username, profile.username)
+
+  // 1. 사용자 정보는 로컬스토리지 (새로고침/재접속 시 UX 유지를 위해)
+  localStorage.setItem(STORAGE_KEYS.auth.localId, profile.localId)
+  localStorage.setItem(STORAGE_KEYS.auth.username, profile.username)
+  
   if (profile.userNum) {
-    sessionStorage.setItem(STORAGE_KEYS.auth.userNum || 'auth_userNum', String(profile.userNum))
+    localStorage.setItem(STORAGE_KEYS.auth.userNum, String(profile.userNum))
   }
+
+  // 2. Access Token은 메모리 변수에 저장 (스토리지 저장 X)
   if (tokens?.accessToken) {
-    sessionStorage.setItem(STORAGE_KEYS.auth.token, tokens.accessToken)
-    console.log('토큰 저장 성공:', tokens.accessToken.substring(0, 20) + '...')
+    _accessToken = tokens.accessToken;
+    console.log('Access 토큰 메모리 저장 완료');
   } else {
-    sessionStorage.removeItem(STORAGE_KEYS.auth.token)
-    console.log('토큰 없음 - 제거')
+    _accessToken = null;
   }
+
+  // 3. Refresh Token은 로컬스토리지 (자동 로그인을 위해)
   if (tokens?.refreshToken) {
-    sessionStorage.setItem(STORAGE_KEYS.auth.refreshToken || 'auth_refreshToken', tokens.refreshToken)
+    localStorage.setItem(STORAGE_KEYS.auth.refreshToken || 'auth_refreshToken', tokens.refreshToken)
   }
 }
 
 export function clearAuthed(): void {
-  sessionStorage.removeItem(STORAGE_KEYS.auth.localId)
-  sessionStorage.removeItem(STORAGE_KEYS.auth.username)
-  sessionStorage.removeItem(STORAGE_KEYS.auth.token)
-  sessionStorage.removeItem(STORAGE_KEYS.auth.userNum || 'auth_userNum')
-  sessionStorage.removeItem(STORAGE_KEYS.auth.refreshToken || 'auth_refreshToken')
+  // 메모리 초기화
+  _accessToken = null;
+  
+  // 스토리지 초기화 (Local Storage 사용)
+  localStorage.removeItem(STORAGE_KEYS.auth.localId)
+  localStorage.removeItem(STORAGE_KEYS.auth.username)
+  // 토큰 키가 기존에 저장되어 있을 수 있으니 확실히 제거
+  localStorage.removeItem(STORAGE_KEYS.auth.token) 
+  localStorage.removeItem(STORAGE_KEYS.auth.userNum)
+  localStorage.removeItem(STORAGE_KEYS.auth.refreshToken)
 }
 
+// 로그인 여부는 Refresh Token이 있거나, 메모리에 Access Token이 있을 때
 export function isAuthed(): boolean {
-  const localId = sessionStorage.getItem(STORAGE_KEYS.auth.localId)
-  const username = sessionStorage.getItem(STORAGE_KEYS.auth.username)
-  return Boolean(localId && username)
+  const hasRefreshToken = !!localStorage.getItem(STORAGE_KEYS.auth.refreshToken);
+  const hasAccessToken = !!_accessToken;
+  return hasRefreshToken || hasAccessToken;
 }
 
 export function getAuthedProfile(): AuthedProfile | null {
-  const localId = sessionStorage.getItem(STORAGE_KEYS.auth.localId)
-  const username = sessionStorage.getItem(STORAGE_KEYS.auth.username)
+  // 로컬스토리지에서 조회
+  const localId = localStorage.getItem(STORAGE_KEYS.auth.localId)
+  const username = localStorage.getItem(STORAGE_KEYS.auth.username)
   if (!localId || !username) return null
   return { localId, username }
 }
 
+// 기존 함수 이름 호환성 유지 (이제 메모리에서 가져옴)
 export function getAuthedToken(): string | null {
-  return sessionStorage.getItem(STORAGE_KEYS.auth.token)
+  return _accessToken;
 }
 
 export function getRefreshToken(): string | null {
-  return sessionStorage.getItem(STORAGE_KEYS.auth.refreshToken)
+  return localStorage.getItem(STORAGE_KEYS.auth.refreshToken)
 }
 
 export function getAuthEmail(): string | null {
-  return sessionStorage.getItem(STORAGE_KEYS.auth.localId)
+  return localStorage.getItem(STORAGE_KEYS.auth.localId)
 }
 
+// 토큰 갱신 시 호출
 export function updateTokens(accessToken: string, refreshToken?: string): void {
-  sessionStorage.setItem(STORAGE_KEYS.auth.token, accessToken)
+  _accessToken = accessToken; // 메모리 갱신
   if (refreshToken) {
-    sessionStorage.setItem(STORAGE_KEYS.auth.refreshToken, refreshToken)
+    localStorage.setItem(STORAGE_KEYS.auth.refreshToken, refreshToken) // 스토리지 갱신
   }
 }
 
@@ -67,11 +94,12 @@ export function updateTokens(accessToken: string, refreshToken?: string): void {
 // Admin Check
 // ============================
 
-// JWT 토큰 디코딩 (간단한 base64 디코딩)
 function decodeJWT(token: string): any {
   try {
-    const base64Url = token.split('.')[1]
-    if (!base64Url) return null
+    const parts = token.split('.');
+    if (parts.length !== 3) return null; // 간단한 유효성 검사 추가
+    
+    const base64Url = parts[1]
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
     const jsonPayload = decodeURIComponent(
       atob(base64)
@@ -86,24 +114,26 @@ function decodeJWT(token: string): any {
   }
 }
 
-// 토큰에서 관리자 권한 확인
 export function isAdmin(): boolean {
-  const token = getAuthedToken()
+  // 스토리지 대신 메모리 변수(_accessToken) 확인
+  const token = _accessToken; 
   if (!token) return false
   
   const payload = decodeJWT(token)
   if (!payload) return false
   
-  // role, isAdmin, admin 등 다양한 키 체크
   return payload.role === 'ADMIN' || 
-         payload.role === 'admin' || 
-         payload.isAdmin === true || 
-         payload.admin === true
+        payload.role === 'admin' || 
+        payload.isAdmin === true || 
+        payload.admin === true
 }
 
 // ============================
 // OAuth State Management
 // ============================
+// OAuth 상태는 짧은 시간 유지되므로 SessionStorage 유지도 괜찮지만,
+// 모바일 브라우저 등의 호환성을 위해 LocalStorage로 통일하는 것도 방법입니다.
+// 여기서는 안전하게 기존 SessionStorage 유지를 권장합니다 (탭 닫으면 초기화 의도).
 
 export function setOAuthState(state: string, redirectUri: string): void {
   sessionStorage.setItem('oauth_state', state)

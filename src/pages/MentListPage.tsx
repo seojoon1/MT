@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { translateTag } from '../i18n/tagTranslations'
-import type { Ment, MentStatus } from '../types/ment'
+import type { Ment, MentStatus, BookmarkItem } from '../types'
 import { cn } from '../utils/cn'
 import { SettingsModal } from '../components/modals'
 import { getMentList, approveMent, rejectMent, getPendingMents, addBookmark, deleteBookmark, getMyBookmarks } from '../services/api'
@@ -78,12 +78,9 @@ export default function MentListPage() {
             const bookmarkData = await getMyBookmarks()
             console.log('📌 북마크 API 응답:', bookmarkData)
             
-            // 북마크 리스트를 mentId 기준으로 변환하고 로컬 스토리지에 동기화
-            const bookmarkIds = bookmarkData.map((item: any) => {
-              // mentId 필드명 확인 (ment_num, mentId, ment_id 등 가능)
-              const id = item.mentId || item.ment_id || item.ment_num
-              console.log('북마크 항목:', item, '→ ID:', id)
-              return String(id)
+            // 북마크 리스트를 mentNum 기준으로 변환하고 로컬 스토리지에 동기화
+            const bookmarkIds = bookmarkData.map((item: BookmarkItem) => {
+              return String(item.mentNum)
             })
             console.log('📌 변환된 북마크 IDs:', bookmarkIds)
             
@@ -224,15 +221,10 @@ export default function MentListPage() {
 
   async function handleRejectConfirm(e: React.MouseEvent, id: string, mentId: number) {
     e.stopPropagation()
-    const reason = rejectReason[id]?.trim()
-    if (!reason) {
-      setError('거절 사유를 입력해주세요.')
-      return
-    }
 
     setProcessingId(id)
     try {
-      await rejectMent(mentId, reason)
+      await rejectMent(mentId)
       // API 재조회로 상태 동기화
       const data = isAdmin ? await getPendingMents() : await getMentList()
       const convertedMents: Ment[] = data.map((item: any) => ({

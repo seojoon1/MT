@@ -1,15 +1,5 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonVariant, ButtonSize, ButtonProps } from '../../types'
 import { cn } from '../../utils/cn'
-import type { ButtonVariant, ButtonSize } from '../../types'
-
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant
-  size?: ButtonSize
-  isLoading?: boolean
-  leftIcon?: ReactNode
-  rightIcon?: ReactNode
-  fullWidth?: boolean
-}
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: 'bg-pink-600 text-white hover:bg-pink-700 border-transparent',

@@ -1,15 +1,11 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { TagProps, TagVariant } from '../../types'
 import { cn } from '../../utils/cn'
 
-interface TagProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  label: string
-  selected?: boolean
-  variant?: 'pink' | 'purple' | 'slate'
-  clickable?: boolean
-  showHash?: boolean
-}
-
-const variantStyles = {
+const variantStyles: Record<TagVariant, {
+  selected: string
+  unselected: string
+  static: string
+}> = {
   pink: {
     selected: 'border-pink-200 bg-pink-600 text-white',
     unselected: 'border-pink-200 bg-white text-slate-700 hover:bg-pink-50',

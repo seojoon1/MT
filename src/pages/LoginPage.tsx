@@ -36,13 +36,13 @@ export default function LoginPage() {
   }
 
   function completeAuthAndGo(localId: string, response: AuthResponse) {
-    const token = response.accessToken || response.token
+    const token = response.accessToken
     if (token) {
       setAuthed(
         { 
           localId, 
           username: response.username || localId,
-          userNum: response.user_num 
+          userNum: response.userNum 
         }, 
         { 
           accessToken: token,
@@ -74,7 +74,7 @@ export default function LoginPage() {
           { 
             localId, 
             username: response.username || localId,
-            userNum: response.user_num 
+            userNum: response.userNum 
           }, 
           { 
             accessToken: response.accessToken,

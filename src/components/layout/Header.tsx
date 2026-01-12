@@ -1,15 +1,7 @@
-import type { ReactNode } from 'react'
+import type { HeaderProps } from '../../types'
 import { Link } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { cn } from '../../utils/cn'
-
-interface HeaderProps {
-  title: string
-  subtitle?: ReactNode
-  backTo?: string
-  rightContent?: ReactNode
-  className?: string
-}
 
 export default function Header({
   title,

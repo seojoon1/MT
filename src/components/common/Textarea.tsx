@@ -1,12 +1,5 @@
-import type { TextareaHTMLAttributes } from 'react'
+import type { TextareaProps, InputVariant } from '../../types'
 import { cn } from '../../utils/cn'
-import type { InputVariant } from '../../types'
-
-interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label?: string
-  variant?: InputVariant
-  error?: string
-}
 
 const variantStyles: Record<InputVariant, string> = {
   default: 'border-pink-200 focus:border-pink-400',

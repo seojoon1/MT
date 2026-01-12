@@ -1,10 +1,5 @@
-import type { HTMLAttributes, ReactNode } from 'react'
+import type { CardProps } from '../../types'
 import { cn } from '../../utils/cn'
-
-interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  children: ReactNode
-  noPadding?: boolean
-}
 
 export default function Card({
   children,

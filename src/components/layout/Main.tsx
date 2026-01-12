@@ -1,10 +1,5 @@
-import type { ReactNode } from 'react'
+import type { MainProps } from '../../types'
 import { cn } from '../../utils/cn'
-
-interface MainProps {
-  children: ReactNode
-  className?: string
-}
 
 export default function Main({ children, className }: MainProps) {
   return (

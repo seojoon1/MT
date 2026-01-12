@@ -2,18 +2,12 @@ import { X, LogOut, Trash2, Globe } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import type { SettingsModalProps, Language } from '../../types'
 import { Button } from '../common'
 import { cn } from '../../utils/cn'
 import { logout, deletedAccount } from '../../services/api'
 import { clearAuthed } from '../../storage/authStorage'
 import { ROUTES } from '../../constants'
-
-type Language = 'ko' | 'lo' | 'en'
-
-interface SettingsModalProps {
-  isOpen: boolean
-  onClose: () => void
-}
 
 const LANGUAGES: { code: Language; label: string; flag: string }[] = [
   { code: 'ko', label: '한국어', flag: '🇰🇷' },

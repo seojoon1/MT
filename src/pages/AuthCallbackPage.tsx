@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { jwtDecode } from 'jwt-decode'
-import { exchangeCodeForToken } from '../services/authService'
+import { exchangeCodeForToken } from '../services/api'
 import { setAuthed, getOAuthState, clearOAuthState } from '../storage/authStorage'
 import { ROUTES } from '../constants'
 

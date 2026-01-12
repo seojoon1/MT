@@ -1,13 +1,5 @@
-import type { InputHTMLAttributes, ReactNode } from 'react'
+import type { InputProps, InputVariant } from '../../types'
 import { cn } from '../../utils/cn'
-import type { InputVariant } from '../../types'
-
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string
-  leftIcon?: ReactNode
-  variant?: InputVariant
-  error?: string
-}
 
 const variantStyles: Record<InputVariant, string> = {
   default: 'border-pink-200 focus-within:border-pink-400',
