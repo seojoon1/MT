@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { translateTag } from '../i18n/tagTranslations'
+import { translateTag, tagTranslations } from '../i18n/tagTranslations'
 import { PageContainer, Header, Main, Card, Textarea, Button, Tag, Alert } from '../components'
 import { ROUTES } from '../constants'
 import { addComment, getMentList } from '../services/api'
@@ -27,19 +27,33 @@ export default function MentEditorPage() {
       try {
         const data = await getMentList()
         const tagSet = new Set<string>()
+
+        // 항상 기본 태그 목록(번역 키)을 포함
+        Object.keys(tagTranslations).forEach((k) => tagSet.add(k))
+
         data.forEach((item: any) => {
           if (item.tag) {
             item.tag.split(',').forEach((t: string) => tagSet.add(t.trim()))
           }
         })
-        setAvailableTags(Array.from(tagSet).sort((a, b) => a.localeCompare(b, 'ko')))
+
+        const sorted = Array.from(tagSet).sort((a, b) => a.localeCompare(b, 'ko'))
+        setAvailableTags(sorted)
+        // 기본 선택: 선택된 태그가 없으면 첫 항목 사용
+        if (sorted.length > 0 && tags.length === 0) {
+          setTags([sorted[0]])
+        }
       } catch (err) {
         console.error('태그 목록 불러오기 실패:', err)
+        // 실패 시에도 기본 태그 목록 사용
+        const defaults = Object.keys(tagTranslations).sort((a, b) => a.localeCompare(b, 'ko'))
+        setAvailableTags(defaults)
+        if (defaults.length > 0 && tags.length === 0) setTags([defaults[0]])
       } finally {
         setLoadingTags(false)
       }
     }
-    
+
     fetchTags()
   }, [])
 

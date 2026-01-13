@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { isAuthed } from './storage/authStorage'
+import { initAuthFromRefresh } from './services/api'
 import LoginPage from './pages/LoginPage'
 import MentDetailPage from './pages/MentDetailPage'
 import MentEditorPage from './pages/MentEditorPage'
@@ -17,6 +19,30 @@ function RequireAuth({ children }: { children: React.ReactElement }) {
 }
 
 export default function App() {
+  const [initializing, setInitializing] = useState(true)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        await initAuthFromRefresh()
+      } finally {
+        if (mounted) setInitializing(false)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  if (initializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-sm text-slate-600">로딩 중...</div>
+      </div>
+    )
+  }
+
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/ments" replace />} />

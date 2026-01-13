@@ -32,9 +32,9 @@ function createClient(baseURL: string): AxiosInstance { // Axios 인스턴스 �
 
       // skipAuth 또는 특정 경로는 리프레시 제외
       const skipRefresh = originalRequest.skipAuth || 
-                        originalRequest.url?.includes('/login') ||
-                        originalRequest.url?.includes('/register') ||
-                        originalRequest.url?.includes('/refreshtoken')
+                            originalRequest.url?.includes('/login') ||
+                            originalRequest.url?.includes('/register') ||
+                            originalRequest.url?.includes('/ment/list')
 
       // 401 에러이고, 재시도하지 않은 요청이며, refresh 대상인 경우
       if (error.response?.status === 401 && !originalRequest._retry && !skipRefresh) {
@@ -52,16 +52,8 @@ function createClient(baseURL: string): AxiosInstance { // Axios 인스턴스 �
           console.log('Attempting to refresh access token...')
           
           // refresh token으로 새로운 access token 요청
-          const response = await axios.post(
-            `${baseURL}/refreshtoken`,
-            {},
-            { 
-              headers: { Authorization: `Bearer ${refreshToken}` },
-              withCredentials: true
-            }
-          )
-
-          const { accessToken, refreshToken: newRefreshToken } = response.data
+          const response = await refreshAccessToken({ refreshToken })
+          const { accessToken, refreshToken: newRefreshToken } = response
 
           if (!accessToken) {
             throw new Error('TOKEN_REFRESH_FAILED')
@@ -143,10 +135,11 @@ export async function postRegister(payload: RegisterPayload): Promise<AuthRespon
 }
 
 export async function refreshAccessToken(payload: RefreshTokenPayload): Promise<AuthResponse> {
-  return apiRequest<AuthResponse>('/token/refresh', { 
-    method: 'POST', 
-    body: payload,
-    skipAuth: true 
+  // 백엔드가 헤더 `authorization-refresh`로 토큰을 받는 구현에 맞춤
+  return apiRequest<AuthResponse>('/refreshtoken', {
+    method: 'POST',
+    skipAuth: true,
+    headers: { 'authorization-refresh': payload.refreshToken },
   })
 }
 
@@ -256,4 +249,26 @@ export async function deleteBookmark(mentId: number): Promise<{ message?: string
 // 내 북마크 목록 조회
 export async function getMyBookmarks(): Promise<BookmarkItem[]> {
   return apiRequest<BookmarkItem[]>('/my/bookmarks', { method: 'GET' })
+}
+
+/**
+ * 앱 시작 시 로컬에 저장된 refresh token으로 access token을 초기화합니다.
+ * 성공하면 true, 실패하거나 토큰이 없으면 false를 반환합니다.
+ */
+export async function initAuthFromRefresh(): Promise<boolean> {
+  try {
+    const refreshToken = getRefreshToken()
+    if (!refreshToken) return false
+
+    const resp = await refreshAccessToken({ refreshToken })
+    const { accessToken, refreshToken: newRefreshToken } = resp
+    if (!accessToken) return false
+
+    updateTokens(accessToken, newRefreshToken || refreshToken)
+    return true
+  } catch (err) {
+    console.error('initAuthFromRefresh failed:', err)
+    clearAuthed()
+    return false
+  }
 }

@@ -16,6 +16,7 @@ export default function MentListPage() {
   const [showSettings, setShowSettings] = useState(false)
 
   const [isAdmin, setIsAdminState] = useState<boolean>(false)
+  const [originalIsAdmin, setOriginalIsAdmin] = useState<boolean>(false)
   const [selectedTag, setSelectedTag] = useState<string>('__all__') // 내부 키로 저장
   const [ments, setMentsState] = useState<Ment[]>([])
   const [bookmarks, setBookmarks] = useState<string[]>(() => {
@@ -34,6 +35,7 @@ export default function MentListPage() {
   useEffect(() => {
     const adminStatus = checkIsAdmin()
     setIsAdminState(adminStatus)
+    setOriginalIsAdmin(adminStatus)
   }, [])
 
   // 라오스어 JSON 파싱 함수
@@ -76,8 +78,10 @@ export default function MentListPage() {
             
             // 북마크 리스트를 mentNum 기준으로 변환하고 로컬 스토리지에 동기화
             const bookmarkIds = bookmarkData.map((item: BookmarkItem) => {
-              return String(item.mentNum)
-            })
+              // 백엔드가 mentNum 또는 mentId 중 하나로 보낼 수 있으므로 둘 다 체크
+              const id = (item as any).mentNum ?? (item as any).mentId
+              return String(id)
+            }).filter((id) => id && id !== 'undefined')
             console.log('📌 변환된 북마크 IDs:', bookmarkIds)
             
             setBookmarks(bookmarkIds)
@@ -247,7 +251,7 @@ export default function MentListPage() {
                 <Settings className="h-5 w-5" />
               </button>
 
-              {isAdmin && (
+              {originalIsAdmin && (
                 <button
                   type="button"
                   onClick={() => setIsAdminState((v) => !v)}
