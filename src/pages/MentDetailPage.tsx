@@ -9,19 +9,26 @@ import { getMentList, approveMent, rejectMent } from '../services/api'
 import type { Ment, MentStatus } from '../types'
 import { isAdmin as checkIsAdmin } from '../storage/authStorage'
 
+/**
+ * @description
+ * 단일 '멘트(Ment)'의 상세 정보를 보여주는 페이지입니다.
+ * 일반 사용자 전용 페이지이며, 관리자는 이 페이지에 접근 시 메인 목록으로 리다이렉트됩니다.
+ */
 export default function MentDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams<{ id: string }>() // URL 파라미터에서 멘트 ID를 가져옴
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const isAdmin = useMemo(() => checkIsAdmin(), [])
 
-  const [ment, setMent] = useState<Ment | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  // --- 상태 관리 ---
+  const [ment, setMent] = useState<Ment | null>(null) // 현재 페이지에 표시할 멘트 객체
+  const [loading, setLoading] = useState(true) // 데이터 로딩 상태
+  const [isProcessing, setIsProcessing] = useState(false) // 관리자 액션(승인/거절) 처리 중 상태
+  const [error, setError] = useState<string | null>(null) // 에러 메시지
+  const [successMessage, setSuccessMessage] = useState<string | null>(null) // 성공 메시지 (승인/거절 후)
 
-  // 어드민 모드 체크 및 리다이렉트
+  // --- 권한 제어 ---
+  // 이 페이지는 일반 사용자 전용이므로, 관리자일 경우 메인 목록 페이지로 리다이렉트합니다.
   useEffect(() => {
     const adminStatus = checkIsAdmin()
     if (adminStatus) {
@@ -30,18 +37,23 @@ export default function MentDetailPage() {
     }
   }, [navigate])
 
-  // API에서 멘트 목록 가져와서 해당 ID 찾기
+  // --- 데이터 로딩 ---
+  // URL의 id에 해당하는 멘트 데이터를 불러옵니다.
   useEffect(() => {
     const fetchMent = async () => {
       if (!id) return
       
       setLoading(true)
       try {
+        // **데이터 로딩 전략**: 
+        // 백엔드에 `getMentById`와 같은 API가 없으므로, 전체 멘트 목록을 가져온 후
+        // 클라이언트 측에서 URL의 id와 일치하는 항목을 `find` 메소드로 찾습니다.
+        // 이 방식은 API 구현을 단순화하지만, 멘트 개수가 많아지면 성능 저하의 원인이 될 수 있습니다.
         const data = await getMentList()
         const foundItem = data.find((item: any) => String(item.mentId) === id)
         
         if (foundItem) {
-          // contentLo JSON 파싱
+          // API 응답을 프론트엔드 `Ment` 타입으로 변환
           let parsedLo = ''
           if (foundItem.contentLo) {
             try {
@@ -72,6 +84,11 @@ export default function MentDetailPage() {
     
     fetchMent()
   }, [id])
+
+  // --- 관리자 액션 핸들러 ---
+  // [주의] 아래의 handleApprove, handleRejectConfirm 함수와 관련 UI는
+  // 페이지 상단의 관리자 리다이렉트 로직 때문에 실제로는 호출될 수 없는 '죽은 코드(Dead Code)'일 가능성이 높습니다.
+  // 이전 개발 단계의 유물이거나, 다른 경로로 이 컴포넌트를 재사용하려던 흔적일 수 있습니다.
 
   async function handleApprove() {
     if (!ment || isProcessing) return
@@ -105,15 +122,14 @@ export default function MentDetailPage() {
     }
   }
 
+
+  // --- 렌더링 로직 ---
+
   if (loading) {
     return (
       <PageContainer>
         <Header title={t('ment.detail')} backTo={ROUTES.MENTS} />
-        <Main>
-          <Card>
-            <p className="text-sm text-slate-600">{t('common.loading')}</p>
-          </Card>
-        </Main>
+        <Main><Card><p className="text-sm text-slate-600">{t('common.loading')}</p></Card></Main>
       </PageContainer>
     )
   }
@@ -122,26 +138,17 @@ export default function MentDetailPage() {
     return (
       <PageContainer>
         <Header title={t('ment.detail')} backTo={ROUTES.MENTS} />
-        <Main>
-          <Card>
-            <p className="text-sm text-slate-600">{t('ment.mentNotFound')}</p>
-          </Card>
-        </Main>
+        <Main><Card><p className="text-sm text-slate-600">{t('ment.mentNotFound')}</p></Card></Main>
       </PageContainer>
     )
   }
 
+  // 일반 사용자가 아직 승인되지 않은 멘트에 접근하는 것을 방지
   if (!isAdmin && ment.status !== 'approved') {
     return (
       <PageContainer>
         <Header title={t('ment.detail')} backTo={ROUTES.MENTS} />
-        <Main>
-          <Card>
-            <p className="text-sm text-slate-600">
-              {t('ment.pendingApproval')}
-            </p>
-          </Card>
-        </Main>
+        <Main><Card><p className="text-sm text-slate-600">{t('ment.pendingApproval')}</p></Card></Main>
       </PageContainer>
     )
   }
@@ -150,23 +157,11 @@ export default function MentDetailPage() {
 
   return (
     <PageContainer>
-      <Header
-        title={t('ment.detail')}
-        backTo={ROUTES.MENTS}
-      />
+      <Header title={t('ment.detail')} backTo={ROUTES.MENTS} />
 
       <Main>
-        {error && (
-          <Alert variant="error" className="mb-4">
-            {error}
-          </Alert>
-        )}
-        
-        {successMessage && (
-          <Alert variant="success" className="mb-4">
-            {successMessage}
-          </Alert>
-        )}
+        {error && <Alert variant="error" className="mb-4">{error}</Alert>}
+        {successMessage && <Alert variant="success" className="mb-4">{successMessage}</Alert>}
 
         <Card>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -175,7 +170,6 @@ export default function MentDetailPage() {
               <p className="text-xs font-semibold text-pink-700">{t('ment.korean')}</p>
               <p className="mt-2 text-base font-semibold text-slate-900">{ment.ko}</p>
             </div>
-
             {/* 라오스어 */}
             <div className="rounded-2xl bg-purple-50 p-4">
               <p className="text-xs font-semibold text-purple-700">{t('ment.lao')}</p>
@@ -198,28 +192,15 @@ export default function MentDetailPage() {
           </div>
         </Card>
 
-        {/* 관리자 승인/거절 영역 */}
+        {/* [Dead Code] 관리자 승인/거절 영역. 페이지 상단의 리다이렉트 로직으로 인해 이 UI는 렌더링되지 않을 것입니다. */}
         {isAdmin && isPending && (
           <Card className="mt-4">
             <h3 className="text-lg font-semibold text-slate-900 mb-4">{t('ment.adminAction')}</h3>
-            
             <div className="flex gap-3">
-              <Button
-                variant="success"
-                onClick={handleApprove}
-                disabled={isProcessing}
-                className="flex-1"
-                leftIcon={isProcessing ? <Spinner size="sm" /> : <Check className="h-5 w-5" />}
-              >
+              <Button variant="success" onClick={handleApprove} disabled={isProcessing} className="flex-1" leftIcon={isProcessing ? <Spinner size="sm" /> : <Check className="h-5 w-5" />}>
                 {isProcessing ? t('common.loading') : t('ment.approve')}
               </Button>
-              <Button
-                variant="danger"
-                onClick={handleRejectConfirm}
-                disabled={isProcessing}
-                className="flex-1"
-                leftIcon={isProcessing ? <Spinner size="sm" /> : <X className="h-5 w-5" />}
-              >
+              <Button variant="danger" onClick={handleRejectConfirm} disabled={isProcessing} className="flex-1" leftIcon={isProcessing ? <Spinner size="sm" /> : <X className="h-5 w-5" />}>
                 {isProcessing ? t('common.loading') : t('ment.reject')}
               </Button>
             </div>

@@ -2,47 +2,74 @@ import axios, { AxiosHeaders, type AxiosInstance, type AxiosRequestHeaders, type
 import { getAuthedToken, getRefreshToken, clearAuthed, updateTokens } from '../storage/authStorage'
 import type { AuthResponse, MentItem, TranslateResponse, ApiInit, BookmarkItem, LoginPayload, RegisterPayload, RefreshTokenPayload, AddCommentPayload, TranslatePayload } from '../types'
 
-// Axios config에 커스텀 플래그 추가를 위한 타입 확장
+/**
+ * @file api.ts
+ * @description
+ * 이 애플리케이션의 모든 백엔드 API 통신을 중앙에서 관리하는 파일입니다.
+ * Axios 라이브러리를 기반으로 클라이언트를 생성하고, 다음과 같은 핵심 기능을 수행합니다.
+ * 1. API 요청/응답의 공통 처리 (Base URL, Header 등)
+ * 2. Access Token 자동 첨부: 인증이 필요한 모든 요청에 자동으로 Access Token을 헤더에 추가합니다.
+ * 3. Access Token 자동 갱신: API 요청이 401 Unauthorized 에러를 반환했을 때,
+ *    저장된 Refresh Token을 사용해 자동으로 새로운 Access Token을 발급받고, 실패했던 요청을 재시도합니다.
+ */
+
+
+// Axios config에 커스텀 플래그를 추가하기 위한 타입 확장
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
-  _retry?: boolean
-  skipAuth?: boolean
+  _retry?: boolean // 토큰 갱신 후 재시도 여부를 나타내는 플래그
+  skipAuth?: boolean // 인증 헤더(Access Token)를 생략할지 여부를 나타내는 플래그
 }
 
 // 기존 코드 호환성을 위해 re-export
 export type { AuthResponse, MentItem, TranslateResponse, BookmarkItem, LoginPayload, RegisterPayload, AddCommentPayload, TranslatePayload }
 
-function ensureApiBase(): string { //base URL 결정
+/**
+ * 환경변수에서 API 서버의 Base URL을 가져옵니다.
+ * 설정되어 있지 않으면 에러를 발생시킵니다.
+ */
+function ensureApiBase(): string {
   const base = import.meta.env.VITE_API_BASE_URL as string | undefined
-
   if (!base) throw new Error('VITE_API_BASE_URL environment variable is not set')
   return base
 }
-function createClient(baseURL: string): AxiosInstance { // Axios 인스턴스 생성
+
+/**
+ * Axios 인스턴스를 생성하고, 핵심적인 인터셉터 로직을 설정합니다.
+ * @param baseURL API 서버의 Base URL
+ */
+function createClient(baseURL: string): AxiosInstance {
   const client = axios.create({
-    baseURL, //base URL 설정
-    withCredentials: true, //쿠키 포함
-    headers: { 'Content-Type': 'application/json' }, //기본 헤더 설정
+    baseURL,
+    withCredentials: true, // 타 도메인 간 요청 시 쿠키 포함 여부
+    headers: { 'Content-Type': 'application/json' },
   })
 
-  // 401 에러 시 자동 리프레시 토큰 갱신 및 재시도
+  // --- 응답 인터셉터 (Response Interceptor) ---
+  // 자동 토큰 갱신 로직의 핵심입니다.
   client.interceptors.response.use(
+    // 성공적인 응답은 그대로 통과시킵니다.
     (response) => response,
+    // 에러가 발생한 응답을 처리합니다.
     async (error) => {
       const originalRequest = error.config as CustomAxiosRequestConfig
 
-      // skipAuth 또는 특정 경로는 리프레시 제외
+      // 토큰 갱신을 건너뛰어야 하는 경우 (인증이 필요 없는 요청 등)
       const skipRefresh = originalRequest.skipAuth || 
                             originalRequest.url?.includes('/login') ||
                             originalRequest.url?.includes('/register') ||
                             originalRequest.url?.includes('/ment/list')
 
-      // 401 에러이고, 재시도하지 않은 요청이며, refresh 대상인 경우
+      // --- 자동 토큰 갱신 조건 확인 ---
+      // 1. 응답 상태가 401(Unauthorized)인가? (Access Token 만료를 의미)
+      // 2. 이전에 재시도한 요청이 아닌가? (무한 재시도 방지)
+      // 3. 토큰 갱신을 건너뛸 요청이 아닌가?
       if (error.response?.status === 401 && !originalRequest._retry && !skipRefresh) {
-        originalRequest._retry = true
+        originalRequest._retry = true // 재시도 플래그를 true로 설정
 
         try {
           const refreshToken = getRefreshToken()
           if (!refreshToken) {
+            // Refresh Token이 없으면 세션이 만료된 것이므로, 로그아웃 처리
             console.error('No refresh token - logging out')
             clearAuthed()
             window.location.href = '/login'
@@ -51,25 +78,27 @@ function createClient(baseURL: string): AxiosInstance { // Axios 인스턴스 �
 
           console.log('Attempting to refresh access token...')
           
-          // refresh token으로 새로운 access token 요청
+          // 백엔드에 Refresh Token을 보내 새로운 Access Token을 요청합니다.
           const response = await refreshAccessToken({ refreshToken })
           const { accessToken, refreshToken: newRefreshToken } = response
 
           if (!accessToken) {
+            // 새 토큰 발급에 실패하면, 로그아웃 처리
             throw new Error('TOKEN_REFRESH_FAILED')
           }
 
           console.log('Token refresh successful')
 
-          // 새로운 토큰 저장
+          // 새로 발급받은 토큰들을 스토리지에 업데이트합니다.
           updateTokens(accessToken, newRefreshToken || refreshToken)
 
-          // 원래 요청의 헤더를 새 토큰으로 업데이트
+          // 실패했던 원래 요청의 헤더에 새로운 Access Token을 설정합니다.
           originalRequest.headers.Authorization = `Bearer ${accessToken}`
           
-          // 원래 요청 재시도
+          // 수정된 설정으로 원래 요청을 다시 보냅니다.
           return client(originalRequest)
         } catch (refreshError) {
+          // 토큰 갱신 과정 자체에서 에러가 발생하면, 로그아웃 처리합니다.
           console.error('Token refresh failed:', refreshError)
           clearAuthed()
           window.location.href = '/login'
@@ -77,23 +106,34 @@ function createClient(baseURL: string): AxiosInstance { // Axios 인스턴스 �
         }
       }
 
+      // 401 에러가 아니거나, 재시도 조건에 맞지 않으면 에러를 그대로 반환합니다.
       return Promise.reject(error)
     }
   )
 
   return client
 }
+
+/**
+ * 설정된 Axios 클라이언트 인스턴스를 가져옵니다.
+ */
 function getClient(baseOverride?: string): AxiosInstance {
   const base = baseOverride ?? ensureApiBase()
   return createClient(base)
 }
 
-
+/**
+ * 모든 API 요청을 처리하는 범용 래퍼 함수입니다.
+ * @param path 요청할 API의 경로
+ * @param init 요청에 대한 설정 (메서드, 바디, 인증 생략 여부 등)
+ */
 async function apiRequest<T>(path: string, init: ApiInit = {}): Promise<T> {
   const { baseOverride, skipAuth, method = 'GET', body, signal } = init
   const client = getClient(baseOverride)
 
   const headers: AxiosRequestHeaders = new AxiosHeaders({ 'Content-Type': 'application/json', ...(init.headers ?? {}) })
+  
+  // `skipAuth: true`가 아닌 경우, 저장된 Access Token을 Authorization 헤더에 추가합니다.
   if (!skipAuth) {
     const token = init.token ?? getAuthedToken()
     if (token) {
@@ -108,12 +148,12 @@ async function apiRequest<T>(path: string, init: ApiInit = {}): Promise<T> {
       data: body,
       signal,
       headers,
-      skipAuth, // 인터셉터에서 사용하기 위해 전달
+      skipAuth, // 인터셉터에서 사용하기 위해 커스텀 설정을 전달
     } as CustomAxiosRequestConfig)
     return res.data
   } catch (err) {
+    // Axios 에러 발생 시, 백엔드가 제공한 에러 메시지를 우선적으로 사용합니다.
     if (axios.isAxiosError(err)) {
-      // 서버에서 제공한 에러 메시지 우선, 없으면 에러 코드 사용
       const message =
         typeof err.response?.data === 'object' && err.response?.data !== null && 'message' in (err.response?.data as object)
           ? String((err.response?.data as { message?: unknown }).message)
@@ -124,18 +164,22 @@ async function apiRequest<T>(path: string, init: ApiInit = {}): Promise<T> {
   }
 }
 
+// =======================================
+// API 함수 정의
+// =======================================
+
+/** (인증 불필요) 로컬 ID/PW로 로그인합니다. */
 export async function postLogin(payload: LoginPayload): Promise<AuthResponse> {
-  // 로컬(이메일/비번) 로그인 엔드포인트
   return apiRequest<AuthResponse>('/login', { method: 'POST', body: payload, skipAuth: true })
 }
 
+/** (인증 불필요) 로컬 ID/PW로 회원가입합니다. */
 export async function postRegister(payload: RegisterPayload): Promise<AuthResponse> {
-  //로컬 회원가입
   return apiRequest<AuthResponse>('/register', { method: 'POST', body: payload, skipAuth: true })
 }
 
+/** (인증 불필요) Refresh Token으로 새로운 Access Token을 발급받습니다. */
 export async function refreshAccessToken(payload: RefreshTokenPayload): Promise<AuthResponse> {
-  // 백엔드가 헤더 `authorization-refresh`로 토큰을 받는 구현에 맞춤
   return apiRequest<AuthResponse>('/refreshtoken', {
     method: 'POST',
     skipAuth: true,
@@ -143,20 +187,19 @@ export async function refreshAccessToken(payload: RefreshTokenPayload): Promise<
   })
 }
 
+/** 로그아웃을 요청합니다. */
 export async function logout(): Promise<void> {
-//로그아웃
   await apiRequest<void>(`/logout`, { method: 'POST' })
 }
 
+/** 회원 탈퇴를 요청합니다. */
 export async function deletedAccount(): Promise<void> {
-  // 회원탈퇴
   await apiRequest<void>('/delete/user', { method: 'DELETE' })
 }
 
 /**
- * Google OAuth 토큰 교환
- * 인증 코드를 백엔드에 전송하여 accessToken과 refreshToken을 받음
- * 주의: 이 요청은 로그인 전이므로 Authorization 헤더를 보내지 않음
+ * (인증 불필요) Google OAuth 인증 코드를 백엔드에 보내 토큰으로 교환합니다.
+ * @param code Google로부터 받은 일회용 인증 코드
  */
 export async function exchangeCodeForToken(code: string): Promise<AuthResponse> {
   try {
@@ -177,11 +220,12 @@ export async function exchangeCodeForToken(code: string): Promise<AuthResponse> 
   }
 }
 
+/** 전체 '멘트' 목록을 조회합니다. */
 export async function getMentList(): Promise<MentItem[]> {
   return apiRequest<MentItem[]>('/ment/list', { method: 'GET' })
 }
 
-// 멘트 추가 (원문만 전송)
+/** 새로운 '멘트'를 추가(요청)합니다. */
 export async function addComment(payload: AddCommentPayload): Promise<{ tag: string; contentKo: string }> {
   return apiRequest<{ tag: string; contentKo: string }>('/request/comment', { 
     method: 'POST', 
@@ -189,17 +233,14 @@ export async function addComment(payload: AddCommentPayload): Promise<{ tag: str
   })
 }
 
-// 즐겨찾기 목록 조회
-
-
+/** '멘트'를 번역합니다. */
 export async function translateComment(payload: TranslatePayload): Promise<string> {
-  // 한국어 → 라오스어 번역
   const response = await apiRequest<TranslateResponse>('/translate', { 
     method: 'POST', 
     body: payload 
   })
   
-  // content는 JSON 문자열이므로 파싱
+  // 백엔드에서 content가 JSON 문자열로 오는 경우를 대비한 파싱 로직
   try {
     const parsed = JSON.parse(response.content) as { translation?: string }
     return parsed.translation || ''
@@ -208,52 +249,59 @@ export async function translateComment(payload: TranslatePayload): Promise<strin
   }
 }
 
-// ============================
-// 관리자 전용 API
-// ============================
-
-// 승인 대기 목록 조회 (관리자 전용)
-export async function getPendingMents(): Promise<MentItem[]> {
-  return apiRequest<MentItem[]>('/admin/ment/pending', { method: 'GET' })
-}
-
-// 멘트 승인 (관리자 전용)
-export async function approveMent(mentId: number): Promise<{ message?: string }> {
-  return apiRequest<{ message?: string }>(`/add/comment?mentId=${mentId}`, { 
-    method: 'POST' 
-  })
-}
-
-// 멘트 거절 (관리자 전용)
-export async function rejectMent(mentId: number): Promise<{ message?: string }> {
-  return apiRequest<{ message?: string }>(`/request/negative?mentId=${mentId}`, { 
-    method: 'POST'
-  })
-}
-// ============================
-
-// 북마크 추가
+/** 북마크를 추가합니다. */
 export async function addBookmark(mentId: number): Promise<{ message?: string }> {
   return apiRequest<{ message?: string }>(`/add/bookmark?mentId=${mentId}`, { 
     method: 'POST' 
   })
 }
 
-// 북마크 삭제
+/** 북마크를 삭제합니다. */
 export async function deleteBookmark(mentId: number): Promise<{ message?: string }> {
   return apiRequest<{ message?: string }>(`/delete/bookmark?mentId=${mentId}`, { 
     method: 'DELETE' 
   })
 }
 
-// 내 북마크 목록 조회
+/** 현재 로그인한 사용자의 북마크 목록을 조회합니다. */
 export async function getMyBookmarks(): Promise<BookmarkItem[]> {
   return apiRequest<BookmarkItem[]>('/my/bookmarks', { method: 'GET' })
 }
 
+
+// ============================
+// 관리자 전용 API
+// ============================
+
+/** (관리자) 승인 대기 중인 '멘트' 목록을 조회합니다. */
+export async function getPendingMents(): Promise<MentItem[]> {
+  return apiRequest<MentItem[]>('/admin/ment/pending', { method: 'GET' })
+}
+
+/** (관리자) 특정 '멘트'를 승인합니다. */
+export async function approveMent(mentId: number): Promise<{ message?: string }> {
+  return apiRequest<{ message?: string }>(`/add/comment?mentId=${mentId}`, { 
+    method: 'POST' 
+  })
+}
+
+/** (관리자) 특정 '멘트'를 거절합니다. */
+export async function rejectMent(mentId: number): Promise<{ message?: string }> {
+  return apiRequest<{ message?: string }>(`/request/negative?mentId=${mentId}`, { 
+    method: 'POST'
+  })
+}
+
+
+// ============================
+// 앱 초기화 관련 함수
+// ============================
+
 /**
- * 앱 시작 시 로컬에 저장된 refresh token으로 access token을 초기화합니다.
- * 성공하면 true, 실패하거나 토큰이 없으면 false를 반환합니다.
+ * 앱 시작 시 호출되는 함수.
+ * localStorage에 저장된 Refresh Token으로 새로운 Access Token을 발급받아 로그인 상태를 복원합니다.
+ * 이 함수 덕분에 사용자는 페이지를 새로고침해도 로그인이 유지됩니다.
+ * @returns {Promise<boolean>} 성공 시 true, 토큰이 없거나 실패 시 false를 반환합니다.
  */
 export async function initAuthFromRefresh(): Promise<boolean> {
   try {
@@ -268,6 +316,7 @@ export async function initAuthFromRefresh(): Promise<boolean> {
     return true
   } catch (err) {
     console.error('initAuthFromRefresh failed:', err)
+    // 초기화 실패 시 저장된 모든 인증 정보를 삭제하여 깨끗한 상태로 만듭니다.
     clearAuthed()
     return false
   }

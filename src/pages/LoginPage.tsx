@@ -9,35 +9,53 @@ import { ROUTES } from '../constants'
 import { AxiosError } from 'axios'
 import type { AuthResponse } from '../types'
 
+// 현재 활성화된 폼 탭을 나타내는 타입 (로그인 또는 회원가입)
 type TabKey = 'login' | 'signup'
 
+/**
+ * @description
+ * 자체 계정(ID/PW)을 사용한 로그인 및 회원가입을 처리하는 페이지 컴포넌트입니다.
+ * 사용자는 탭을 통해 로그인과 회원가입 폼을 전환할 수 있습니다.
+ * 또한, Google 계정으로의 인증을 시작하는 페이지('/auth/start')로 이동하는 버튼을 제공합니다.
+ */
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { t } = useTranslation()
+  const { t } = useTranslation() // 다국어 지원을 위한 i18next hook
 
+  // 'login' 또는 'signup' 탭 상태 관리
   const [tab, setTab] = useState<TabKey>('login')
 
-  // 로그인 폼
+  // --- 상태 변수 정의 ---
+  // 로그인 폼 입력 값
   const [loginLocalId, setLoginLocalId] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
 
-  // 회원가입 폼
+  // 회원가입 폼 입력 값
   const [signupLocalId, setSignupLocalId] = useState('')
   const [signupEmail, setSignupEmail] = useState('')
   const [signupUsername, setSignupUsername] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
   const [signupPasswordConfirm, setSignupPasswordConfirm] = useState('')
 
+  // API 요청 실패 시 표시할 에러 메시지
   const [error, setError] = useState<string | null>(null)
+  // API 요청 진행 중 여부를 나타내는 로딩 상태
   const [isLoading, setIsLoading] = useState(false)
 
+  // 에러 메시지 초기화 함수
   function resetError() {
     setError(null)
   }
 
+  /**
+   * 인증 성공 후 공통 처리 로직
+   * @param localId 사용자의 로컬 ID
+   * @param response API로부터 받은 인증 응답 (토큰 포함)
+   */
   function completeAuthAndGo(localId: string, response: AuthResponse) {
     const token = response.accessToken
     if (token) {
+      // 인증 정보(사용자 정보, 토큰)를 스토리지에 저장
       setAuthed(
         { 
           localId, 
@@ -49,10 +67,14 @@ export default function LoginPage() {
           refreshToken: response.refreshToken 
         }
       )
+      // 메인 페이지(멘트 목록)로 이동
       navigate(ROUTES.MENTS)
     }
   }
 
+  /**
+   * 로그인 폼 제출 시 실행되는 핸들러
+   */
   async function onLoginSubmit(e: React.FormEvent) {
     e.preventDefault()
     resetError()
@@ -67,21 +89,12 @@ export default function LoginPage() {
 
     setIsLoading(true)
     try {
+      // API를 통해 로그인을 요청
       const response = await postLogin({ localId, password })
       
       if (response.accessToken) {
-        setAuthed(
-          { 
-            localId, 
-            username: response.username || localId,
-            userNum: response.userNum 
-          }, 
-          { 
-            accessToken: response.accessToken,
-            refreshToken: response.refreshToken 
-          }
-        )
-        navigate(ROUTES.MENTS)
+        // 인증 성공 시 공통 처리 함수 호출
+        completeAuthAndGo(localId, response)
       } else {
         setError(t('auth.loginFailed'))
       }
@@ -92,10 +105,14 @@ export default function LoginPage() {
     }
   }
 
+  /**
+   * 회원가입 폼 제출 시 실행되는 핸들러
+   */
   async function onSignupSubmit(e: React.FormEvent) {
     e.preventDefault()
     resetError()
 
+    // 폼 입력값 유효성 검사
     const localId = signupLocalId.trim()
     const email = signupEmail.trim()
     const username = signupUsername.trim()
@@ -106,22 +123,18 @@ export default function LoginPage() {
       setError(t('auth.allFieldsRequired'))
       return
     }
-
     if (localId.length < 3) {
       setError(t('auth.userIdMinLength'))
       return
     }
-
     if (username.length < 2) {
       setError(t('auth.minCharacters', { count: 2 }))
       return
     }
-
     if (password.length < 6) {
       setError(t('auth.minCharacters', { count: 6 }))
       return
     }
-
     if (password !== confirm) {
       setError(t('auth.passwordMismatch'))
       return
@@ -129,6 +142,7 @@ export default function LoginPage() {
 
     setIsLoading(true)
     try {
+      // 1. API를 통해 회원가입을 요청
       const registerRes = await postRegister({ 
         localId, 
         password, 
@@ -137,13 +151,15 @@ export default function LoginPage() {
       })
       
       if (registerRes.accessToken) {
+        // 회원가입 응답에 토큰이 포함된 경우, 바로 로그인 처리
         completeAuthAndGo(localId, registerRes)
       } else {
-        // 회원가입은 성공했지만 토큰이 없는 경우 자동 로그인
+        // 2. 회원가입은 성공했지만 토큰이 없는 경우, 별도로 로그인을 다시 요청 (UX 향상)
         const loginRes = await postLogin({ localId, password })
         completeAuthAndGo(localId, loginRes)
       }
     } catch (e) {
+      // API에서 반환된 특정 에러 메시지에 따라 분기 처리
       const error = e as AxiosError
       const errorMessage = error.response?.data as any
       const message = typeof errorMessage === 'string' ? errorMessage : errorMessage?.message
@@ -170,7 +186,7 @@ export default function LoginPage() {
           <h1 className="text-lg font-semibold text-slate-900">{t('auth.login')}</h1>
           <p className="mt-1 text-sm text-slate-500">{t('auth.loginDescription')}</p>
 
-          {/* 탭 전환 */}
+          {/* 탭 전환 UI */}
           <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-pink-50 p-1">
             <button
               type="button"
@@ -264,6 +280,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {/* Google OAuth 인증 시작 페이지로 이동하는 버튼 */}
               <button
                 type="button"
                 onClick={() => navigate('/auth/start')}
