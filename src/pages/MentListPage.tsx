@@ -1,4 +1,4 @@
-import { Check, Heart, Plus, Settings, Trash2 } from 'lucide-react'
+import { Check, Heart, Plus, Settings, Trash2, User } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -70,6 +70,7 @@ export default function MentListPage() {
           id: String(item.mentId),
           ko: item.contentKo,
           lo: parseLaoText(item.contentLo || ''),
+          authorNickname: item.authorNickname || '',
           tags: item.tag ? item.tag.split(',').map((t: string) => t.trim()) : [],
           aiHint: '',
           status: (item.isApproved === 1 ? 'approved' : 'pending') as MentStatus,
@@ -169,6 +170,7 @@ export default function MentListPage() {
       id: String(item.mentId), 
       ko: item.contentKo, 
       lo: parseLaoText(item.contentLo || ''),
+      authorNickname: item.authorNickname || '',
       tags: item.tag ? item.tag.split(',').map((t: string) => t.trim()) : [], 
       aiHint: '',
       status: (item.isApproved === 1 ? 'approved' : 'pending') as MentStatus,
@@ -267,15 +269,19 @@ export default function MentListPage() {
                 const isPending = m.status === 'pending'
                 const isBookmarked = bookmarks.includes(m.id)
                 return (
-                  <div key={m.id} role="button" tabIndex={0} onClick={() => !isAdmin && navigate(`/ments/${m.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') !isAdmin && navigate(`/ments/${m.id}`) }} className={cn('rounded-2xl border bg-white p-4 shadow-sm', 'border-pink-100')}>
+                  <div key={m.id} role="button" tabIndex={0} onClick={() => !isAdmin && navigate(`/ments/${m.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') !isAdmin && navigate(`/ments/${m.id}`) }} className={cn('relative rounded-2xl border bg-white p-4 shadow-sm', 'border-pink-100')}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-base font-semibold text-slate-900">{m.ko}</p>
                         <p className="mt-1 text-sm text-slate-500">{m.lo}</p>
+                        {m.authorNickname && (
+                          <p className="mt-2 text-xs text-slate-400">@{m.authorNickname}</p>
+                        )}
                         <div className="mt-3 flex flex-wrap gap-2">
                           {m.tags.map((t) => (
                             <span key={t} className="rounded-full bg-pink-50 px-3 py-1 text-xs font-medium text-pink-700">
                               #{translateTag(t, i18n.language as 'ko' | 'lo')}
+                              
                             </span>
                           ))}
                           {isAdmin && (
@@ -302,6 +308,13 @@ export default function MentListPage() {
                           <Trash2 className="h-5 w-5" />
                           {processingId === m.id ? t('common.loading') : t('ment.reject')}
                         </button>
+                      </div>
+                    )}
+                    {/* 작성자 아바타 + 닉네임: 우측 하단에 절대 위치 */}
+                    {m.authorNickname && (
+                      <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2 rounded-full bg-white/0 px-2 py-1">
+                        <User className="h-5 w-5 text-slate-400" />
+                        <span className="text-xs text-slate-500">@{m.authorNickname}</span>
                       </div>
                     )}
                   </div>

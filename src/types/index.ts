@@ -60,6 +60,8 @@ export type Ment = {
   ko: string
   lo: string
   tags: Tag[]
+  /** 작성자 닉네임(서버 응답에 따라 optional) */
+  authorNickname?: string
   aiHint: string
   status: MentStatus
   createdAt: number
