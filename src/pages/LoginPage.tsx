@@ -9,6 +9,7 @@ import { ROUTES } from '../constants'
 import { AxiosError } from 'axios'
 import type { AuthResponse } from '../types'
 
+
 // 현재 활성화된 폼 탭을 나타내는 타입 (로그인 또는 회원가입)
 type TabKey = 'login' | 'signup'
 
@@ -17,6 +18,8 @@ type TabKey = 'login' | 'signup'
  * 자체 계정(ID/PW)을 사용한 로그인 및 회원가입을 처리하는 페이지 컴포넌트입니다.
  * 사용자는 탭을 통해 로그인과 회원가입 폼을 전환할 수 있습니다.
  * 또한, Google 계정으로의 인증을 시작하는 페이지('/auth/start')로 이동하는 버튼을 제공합니다.
+ * 
+ * 
  */
 export default function LoginPage() {
   const navigate = useNavigate()

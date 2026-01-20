@@ -46,8 +46,9 @@ export default function MentListPage() {
     if (!contentLo) return ''
     try {
       const parsed = JSON.parse(contentLo)
+      
       // 다양한 key 값에 대응 (번역, translation)
-      return parsed.번역 || parsed.translation || contentLo
+      return  parsed.message || parsed.번역 || parsed.translation || contentLo
     } catch {
       // 파싱 실패 시 원본 문자열 반환
       return contentLo
