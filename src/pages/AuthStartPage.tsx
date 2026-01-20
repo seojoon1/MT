@@ -5,44 +5,44 @@ import { setOAuthState } from '../storage/authStorage'
 
 /**
  * @description
- * Google OAuth 2.0 인증 프로세스를 시작하는 페이지입니다.
- * 이 페이지는 렌더링되자마자 CSRF 방지를 위한 state를 생성하고, 
- * 이 state를 포함한 Google 인증 URL을 만들어 사용자를 해당 URL로 즉시 리다이렉트시킵니다.
- * 사용자는 이 페이지의 UI를 거의 보지 못하고 바로 Google 로그인 화면으로 이동하게 됩니다.
+ * หน้ากำหนดกระบวนการตรวจสอบสิทธิ์ Google OAuth 2.0
+ * หน้านี้จะสร้าง state เพื่อป้องกัน CSRF ทันทีที่เรนเดอร์
+ * และสร้าง URL ตรวจสอบสิทธิ์ Google ที่มี state นี้ และนำผู้ใช้ไปยัง URL นั้นทันที
+ * ผู้ใช้จะไม่เห็น UI ของหน้านี้มากนักและจะไปยังหน้าเข้าสู่ระบบ Google ทันที
  */
 export default function AuthStartPage() {
   const [error, setError] = useState<string | null>(null)
 
-  // 컴포넌트가 마운트될 때 한 번만 실행되는 로직
+  // ตรรมชาติที่เรียกใช้เพียงครั้งเดียวเมื่อคอมโพเนนต์ mount
   useEffect(() => {
     try {
-      // 1. CSRF(Cross-Site Request Forgery) 공격 방지를 위한 고유한 state 값을 생성합니다.
-      // 이 값은 인증 요청 시 전달했다가 콜백(redirect) 시 함께 받아와, 요청이 우리 앱에서 시작된 것인지 검증하는 데 사용됩니다.
+      // 1. สร้างค่า state ที่ไม่ซ้ำกันเพื่อป้องกันการโจมตี CSRF (Cross-Site Request Forgery)
+      // ค่านี้จะถูกส่งผ่านรายการคำขอตรวจสอบสิทธิ์และได้รับมาพร้อมกับโครงสร้างสร้างการเรียกกลับ (redirect) เพื่อตรวจสอบว่าคำขอมาจากแอปของเรา
       const state = createOAuthState()
 
-      // 2. 인증 후 Google이 리다이렉트할 우리 애플리케이션의 URI를 결정합니다.
+      // 2. กำหนด URI ของแอปพลิเคชันของเราที่ Google จะนำทางกลับไปหลังการตรวจสอบสิทธิ์
       const redirectUri =
         `${window.location.origin}/auth/callback`
 
-      // 3. 생성된 state와 redirectUri를 sessionStorage에 저장합니다.
-      // AuthCallbackPage에서 Google이 보내준 state와 저장된 state를 비교하기 위함입니다.
+      // 3. บันทึก state และ redirectUri ที่สร้างขึ้นในที่เก็บข้อมูลเซสชัน
+      // สิ่งนี้ใช้เพื่อเปรียบเทียบ state ที่ Google ส่งกับ state ที่บันทึกไว้ในหน้า AuthCallbackPage
       setOAuthState(state, redirectUri)
 
-      // 4. Google OAuth 인증 URL을 생성합니다.
+      // 4. สร้าง URL ตรวจสอบสิทธิ์ Google
       const authUrl = buildGoogleAuthorizeUrl(state)
 
-      // 5. 생성된 URL로 브라우저를 리다이렉트하여 Google 로그인 프로세스를 시작합니다.
-      // 이 시점에서 사용자는 우리 사이트를 떠나 Google 페이지로 이동합니다.
+      // 5. เปลี่ยนเส้นทางเบราวเซอร์ไปยัง URL ที่สร้างขึ้นเพื่อเริ่มกระบวนการเข้าสู่ระบบ Google
+      // ณ จุดนี้ผู้ใช้จะออกจากเว็บไซต์ของเราและย้ายไปยังหน้า Google
       console.log('🔐 Redirecting to Google OAuth:', authUrl)
       window.location.href = authUrl
     } catch (err) {
-      // URL 생성 또는 리다이렉트 과정에서 에러 발생 시 처리
-      console.error('❌ OAuth 시작 오류:', err)
-      setError(err instanceof Error ? err.message : 'OAuth 시작 중 오류가 발생했습니다.')
+      // เกิดข้อผิดพลาดในกระบวนการสร้าง URL และเปลี่ยนเส้นทาง
+      console.error('❌ เกิดข้อผิดพลาด OAuth:', err)
+      setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดระหว่างเริ่มต้น OAuth')
     }
-  }, []) // 의존성 배열이 비어 있으므로, 마운트 시 1회만 실행됩니다.
+  }, []) // เมื่ออาร์เรย์การพึ่งพาว่างเปล่า จะเรียกใช้เพียงครั้งเดียวเมื่อ mount
 
-  // 인증 흐름에 에러가 발생한 경우 보여줄 UI
+  // UI ที่จะแสดงหากเกิดข้อผิดพลาดในกระบวนการตรวจสอบสิทธิ์
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-pink-50 to-purple-50 p-4">
@@ -60,7 +60,8 @@ export default function AuthStartPage() {
     )
   }
 
-  // 리다이렉트가 일어나기 전 잠시 동안 보여질 로딩 UI
+
+  // UI ที่จะแสดงสักระหว่างเมื่อจะเปลี่ยนเส้นทาง
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-pink-50 to-purple-50 p-4">
       <div className="w-full max-w-md rounded-2xl border border-pink-200 bg-white p-6 shadow-sm text-center">

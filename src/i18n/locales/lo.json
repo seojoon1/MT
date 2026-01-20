@@ -24,7 +24,7 @@
     "enterPassword": "ປ້ອນລະຫັດຜ່ານ",
     "enterUsername": "ປ້ອນຊື່ຜູ້ໃຊ້",
     "enterUserId": "ປ້ອນ ID ຜູ້ໃຊ້",
-    "loginWithGoogle": "ເລີ່ມດ້ວຍ Google",
+    "loginWithGoogle": "ເລີ່ມດ້ວຍ Google", 
     "loginFailed": "ການເຂົ້າສູ່ລະບົບລົ້ມເຫລວ.",
     "signupFailed": "ການລົງທະບຽນລົ້ມເຫລວ.",
     "passwordMismatch": "ລະຫັດຜ່ານບໍ່ກົງກັນ.",
