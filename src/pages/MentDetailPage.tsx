@@ -1,4 +1,6 @@
 import { Check, X } from 'lucide-react'
+import TtsControls from '../components/common/TtsControls'
+import isKorean from '../utils/isKorean'
 import { useMemo, useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +10,7 @@ import { ROUTES } from '../constants'
 import { getMentList, approveMent, rejectMent } from '../services/api'
 import type { Ment, MentStatus } from '../types'
 import { isAdmin as checkIsAdmin } from '../storage/authStorage'
+// import {ttsService} from '../services/ttsService'
 
 /**
  * @description
@@ -166,12 +169,18 @@ export default function MentDetailPage() {
         <Card>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {/* 한국어 */}
-            <div className="rounded-2xl bg-pink-50 p-4">
+            <div className="relative rounded-2xl bg-pink-50 p-4">
+              <div className="absolute top-2 right-2">
+                {isKorean(ment.ko) && <TtsControls text={ment.ko} lang="ko" />}
+              </div>
               <p className="text-xs font-semibold text-pink-700">{t('ment.korean')}</p>
               <p className="mt-2 text-base font-semibold text-slate-900">{ment.ko}</p>
             </div>
             {/* 라오스어 */}
-            <div className="rounded-2xl bg-purple-50 p-4">
+            <div className="relative rounded-2xl bg-purple-50 p-4">
+              <div className="absolute top-2 right-2">
+                {isKorean(ment.lo) && <TtsControls text={ment.lo || ''} lang="ko" />}
+              </div>
               <p className="text-xs font-semibold text-purple-700">{t('ment.lao')}</p>
               {ment.lo ? (
                 <p className="mt-2 text-base font-semibold text-slate-900">{ment.lo}</p>

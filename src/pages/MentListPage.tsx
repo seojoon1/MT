@@ -106,7 +106,8 @@ export default function MentListPage() {
   // 현재 멘트 목록에서 중복을 제거한 전체 태그 목록을 계산합니다.
   // `ments`나 `isAdmin` 상태가 바뀔 때만 재계산하여 성능을 최적화합니다.
   const availableTags = useMemo(() => {
-    const pool = isAdmin ? ments : ments.filter((m) => m.status === 'approved')
+    // 관리자 모드에서는 'pending' 상태만 풀로 사용
+    const pool = isAdmin ? ments.filter((m) => m.status === 'pending') : ments.filter((m) => m.status === 'approved')
     const tagSet = new Set<string>()
     for (const m of pool) for (const t of m.tags) tagSet.add(t)
     return Array.from(tagSet).sort((a, b) => a.localeCompare(b, 'ko'))
@@ -115,7 +116,8 @@ export default function MentListPage() {
   // 현재 선택된 태그에 따라 보여줄 멘트 목록을 필터링합니다.
   // `ments`, `selectedTag`, `bookmarks` 등이 변경될 때만 재계산됩니다.
   const filteredMents = useMemo(() => {
-    const base = isAdmin ? ments : ments.filter((m) => m.status === 'approved')
+    // 관리자는 대기중(pending) 멘트만 보고, 일반 사용자는 승인된(approved) 멘트만 봄
+    const base = isAdmin ? ments.filter((m) => m.status === 'pending') : ments.filter((m) => m.status === 'approved')
     if (selectedTag === '__all__') return base
     if (selectedTag === '__bookmarks__') {
       return base.filter((m) => bookmarks.includes(m.id))
