@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { isAuthed, clearAuthed } from './storage/authStorage'
-import { initAuthFromRefresh } from './services/api'
+import { initAuthFromRefresh, getProfile } from './services/api'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage' // เพิ่ม import
 import HomePage from './pages/HomePage'
@@ -11,6 +11,7 @@ import MentListPage from './pages/MentListPage'
 import AuthStartPage from './pages/AuthStartPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import Navbar from './components/layout/Navbar'
+import MyPage from './pages/MyPage'
 import './i18n/config'
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
@@ -24,18 +25,34 @@ function RequireAuth({ children }: { children: React.ReactElement }) {
 // Layout เดียวที่มี Navbar เสมอ
 function AppLayout({ children }: { children: React.ReactNode }) {
   const isAuthenticated = isAuthed();
-  
+  const [username, setUsername] = useState<string | undefined>(undefined)
+
   const handleLogout = () => {
     clearAuthed();
     window.location.href = '/login';
   };
+
+  useEffect(() => {
+    let mounted = true
+    const fetchProfile = async () => {
+      if (!isAuthenticated) return
+      try {
+        const profile = await getProfile()
+        if (mounted) setUsername(profile.nickname)
+      } catch (err) {
+        console.error('Failed to load profile for navbar:', err)
+      }
+    }
+    fetchProfile()
+    return () => { mounted = false }
+  }, [isAuthenticated])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
       {/* Navbar แสดงตลอด */}
       <Navbar 
         isAuthenticated={isAuthenticated}
-        username={isAuthenticated ? 'User' : undefined}
+        username={isAuthenticated ? (username ?? 'User') : undefined}
         onLogout={handleLogout}
       />
       <main className="py-4">
@@ -126,6 +143,16 @@ export default function App() {
           <RequireAuth>
             <AppLayout>
               <MentListPage />
+            </AppLayout>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/mypage"
+        element={
+          <RequireAuth>
+            <AppLayout>
+              <MyPage />
             </AppLayout>
           </RequireAuth>
         }
