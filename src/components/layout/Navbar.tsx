@@ -197,9 +197,10 @@ const Navbar: React.FC<NavbarProps> = ({
                       </div>
                       <div className="hidden lg:block">
                         <p className="text-xs text-slate-500">{t('navbar.welcome')}</p>
-                        <p className="text-sm font-semibold text-slate-700">
+                        {/* 변경: 닉네임을 클릭하면 마이페이지로 이동하도록 Link로 감쌌습니다. */}
+                        <Link to="/mypage" className="text-sm font-semibold text-slate-700 hover:underline">
                           {username || 'User'}
-                        </p>
+                        </Link>
                       </div>
                     </div>
                     <button
@@ -333,9 +334,10 @@ const Navbar: React.FC<NavbarProps> = ({
                         </div>
                         <div>
                           <p className="text-xs text-slate-500">{t('navbar.welcome')}</p>
-                          <p className="text-sm font-semibold text-slate-700">
+                          {/* 변경: 모바일 메뉴의 닉네임도 클릭 시 마이페이지로 이동, 메뉴 닫힘 처리 */}
+                          <Link to="/mypage" onClick={() => setIsMenuOpen(false)} className="text-sm font-semibold text-slate-700">
                             {username || 'User'}
-                          </p>
+                          </Link>
                         </div>
                       </div>
                       <button

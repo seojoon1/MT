@@ -86,6 +86,13 @@ export type MentItem = {
   reason: string | null
 }
 
+/** 사용자 프로필 정보 (백엔드 `/profile` 응답 형태) */
+export type Profile = {
+  nickname: string
+  postCount: number
+  totalLikes: number
+}
+
 // ============================
 // 멘트 요청 타입
 // ============================

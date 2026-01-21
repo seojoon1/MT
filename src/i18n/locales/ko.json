@@ -129,6 +129,14 @@
     "signup": "회원가입",
     "language": "언어"
   },
+  "mypage": {
+    "title": "마이페이지",
+    "subtitle": "내 활동 요약",
+    "posts": "작성한 글",
+    "totalLikes": "총 좋아요",
+    "bookmarks": "북마크",
+    "noData": "프로필 정보를 불러올 수 없습니다."
+  },
   "tags": {
     "건축학부": "건축학부",
     "공과대학": "공과대학",

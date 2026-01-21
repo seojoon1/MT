@@ -1,6 +1,6 @@
 import axios, { AxiosHeaders, type AxiosInstance, type AxiosRequestHeaders, type InternalAxiosRequestConfig } from 'axios'
 import { getAuthedToken, getRefreshToken, clearAuthed, updateTokens } from '../storage/authStorage'
-import type { AuthResponse, MentItem, TranslateResponse, ApiInit, BookmarkItem, LoginPayload, RegisterPayload, RefreshTokenPayload, AddCommentPayload, TranslatePayload } from '../types'
+import type { AuthResponse, MentItem, TranslateResponse, ApiInit, BookmarkItem, LoginPayload, RegisterPayload, RefreshTokenPayload, AddCommentPayload, TranslatePayload, Profile } from '../types'
 
 /**
  * @file api.ts
@@ -266,6 +266,11 @@ export async function deleteBookmark(mentId: number): Promise<{ message?: string
 /** 현재 로그인한 사용자의 북마크 목록을 조회합니다. */
 export async function getMyBookmarks(): Promise<BookmarkItem[]> {
   return apiRequest<BookmarkItem[]>('/my/bookmarks', { method: 'GET' })
+}
+
+/** 현재 로그인한 사용자의 프로필을 조회합니다. (GET /profile) */
+export async function getProfile(): Promise<Profile> {
+  return apiRequest<Profile>('/profile', { method: 'GET' })
 }
 
 
