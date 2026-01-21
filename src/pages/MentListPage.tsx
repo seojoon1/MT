@@ -1,71 +1,84 @@
-import { Check, Heart, Plus, Settings, Trash2, User } from 'lucide-react'
+import { Heart, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { translateTag } from '../i18n/tagTranslations'
 import type { Ment, MentStatus, BookmarkItem, MentItem } from '../types'
-import { cn } from '../utils/cn'
 import { SettingsModal } from '../components/modals'
 import { getMentList, approveMent, rejectMent, getPendingMents, addBookmark, deleteBookmark, getMyBookmarks } from '../services/api'
 import { isAdmin as checkIsAdmin } from '../storage/authStorage'
 import { STORAGE_KEYS } from '../constants'
 
+// SVG Icons
+const CheckIcon = () => (
+  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+  </svg>
+)
+const AdminIcon = () => (
+  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+  </svg>
+)
 
-/**
- * @description
- * 애플리케이션의 메인 페이지로, '멘트(Ment)' 목록을 보여주는 대시보드 역할을 합니다.
- * 이 컴포넌트는 사용자의 권한(일반 사용자/관리자)에 따라 두 가지 모드로 동작합니다.
- *
- * - **사용자 모드**: 승인된 멘트 목록을 보여주며, 북마크 추가/삭제, 멘트 상세 보기, 새 멘트 추가 등의 기능을 제공합니다.
- * - **관리자 모드**: 승인 대기 중인 멘트 목록을 보여주며, 각 멘트를 승인하거나 거절하는 기능을 제공합니다.
- */
+const UserIcon = () => (
+  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+)
+
+// Random profile data
+const randomNames = ['Anonymous', 'Mystery User', 'Secret Admirer', 'Hidden Voice', 'Silent Heart', 'Unknown Soul', 'Whisperer', 'Dreamer', 'Hopeful', 'Romantic']
+const randomColors = ['bg-pink-500', 'bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-indigo-500']
+const randomEmojis = ['😊', '🥰', '😇', '🤗', '🤫', '😌', '😉', '🤭', '😘', '😍']
+
+const generateRandomProfile = (seed: string) => {
+  const hash = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return {
+    name: randomNames[hash % randomNames.length],
+    color: randomColors[hash % randomColors.length],
+    emoji: randomEmojis[hash % randomEmojis.length],
+    id: `user_${hash.toString(16).slice(0, 6)}`
+  }
+}
+
 export default function MentListPage() {
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const [showSettings, setShowSettings] = useState(false)
 
-  // --- 상태 관리 ---
-  const [isAdmin, setIsAdminState] = useState<boolean>(false) // 현재 UI 모드 (관리자/사용자)
-  const [originalIsAdmin, setOriginalIsAdmin] = useState<boolean>(false) // 실제 사용자의 고유 권한
-  const [selectedTag, setSelectedTag] = useState<string>('__all__') // 선택된 태그 필터
-  const [ments, setMentsState] = useState<Ment[]>([]) // API로부터 받아온 전체 멘트 목록
-  const [bookmarks, setBookmarks] = useState<string[]>([]) // 북마크된 멘트 ID 목록
-  const [loading, setLoading] = useState(false) // 데이터 로딩 상태
-  const [error, setError] = useState<string | null>(null) // 에러 메시지
-  const [processingId, setProcessingId] = useState<string | null>(null) // 관리자 승인/거절 처리 중인 멘트 ID
+  const [isAdmin, setIsAdminState] = useState<boolean>(false)
+  const [originalIsAdmin, setOriginalIsAdmin] = useState<boolean>(false)
+  const [selectedTag, setSelectedTag] = useState<string>('__all__')
+  const [ments, setMentsState] = useState<Ment[]>([])
+  const [bookmarks, setBookmarks] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [processingId, setProcessingId] = useState<string | null>(null)
 
-  // 컴포넌트 마운트 시 사용자의 실제 관리자 권한을 확인하여 상태에 저장
   useEffect(() => {
     const adminStatus = checkIsAdmin()
-    setIsAdminState(adminStatus) // 초기 UI 모드를 실제 권한과 일치시킴
+    setIsAdminState(adminStatus)
     setOriginalIsAdmin(adminStatus)
   }, [])
 
-  // 백엔드에서 받은 JSON 문자열 형식의 라오스어 번역을 파싱하는 함수
   function parseLaoText(contentLo: string): string {
     if (!contentLo) return ''
     try {
       const parsed = JSON.parse(contentLo)
-      
-      // 다양한 key 값에 대응 (번역, translation)
-      return  parsed.message || parsed.번역 || parsed.translation || contentLo
+      return parsed.message || parsed.번역 || parsed.translation || contentLo
     } catch {
-      // 파싱 실패 시 원본 문자열 반환
       return contentLo
     }
   }
 
-  // --- 데이터 로딩 ---
-  // `isAdmin` 상태가 변경될 때마다(모드 전환 시) 적절한 멘트와 북마크 목록을 불러옵니다.
   useEffect(() => {
     const fetchMentsAndBookmarks = async () => {
       setLoading(true)
       setError(null)
       try {
-        // 1. 멘트 목록 호출: 관리자 모드 여부에 따라 다른 API를 호출
         const mentData = isAdmin ? await getPendingMents() : await getMentList()
-        
-        // 2. API 응답 데이터를 프론트엔드 `Ment` 타입으로 변환
+
         const convertedMents: Ment[] = mentData.map((item: MentItem) => ({
           id: String(item.mentId),
           ko: item.contentKo,
@@ -77,18 +90,15 @@ export default function MentListPage() {
           createdAt: new Date(item.createdAt).getTime()
         }))
         setMentsState(convertedMents)
-        
-        // 3. 북마크 목록 호출: 사용자 모드일 때만 실행
+
         if (!isAdmin) {
           try {
             const bookmarkData = await getMyBookmarks()
-            const bookmarkIds = bookmarkData.map((item: BookmarkItem) => String((item as any).mentNum ?? (item as any).mentId)).filter(id => id && id !== 'undefined');
+            const bookmarkIds = bookmarkData.map((item: BookmarkItem) => String((item as any).mentNum ?? (item as any).mentId)).filter(id => id && id !== 'undefined')
             setBookmarks(bookmarkIds)
-            // 빠른 접근을 위해 localStorage에도 캐싱
             localStorage.setItem(STORAGE_KEYS.app.favorites, JSON.stringify(bookmarkIds))
           } catch (bookmarkErr) {
             console.error('북마크 목록 불러오기 실패:', bookmarkErr)
-            // 북마크 로딩 실패는 전체 페이지를 막을 정도의 치명적 오류는 아니므로, 에러를 표시하지 않고 넘어감
           }
         }
       } catch (err) {
@@ -98,13 +108,10 @@ export default function MentListPage() {
         setLoading(false)
       }
     }
-    
-    fetchMentsAndBookmarks()
-  }, [isAdmin, t]) // `isAdmin` 상태가 바뀔 때마다 다시 실행
 
-  // --- 필터링 로직 (Memoization) ---
-  // 현재 멘트 목록에서 중복을 제거한 전체 태그 목록을 계산합니다.
-  // `ments`나 `isAdmin` 상태가 바뀔 때만 재계산하여 성능을 최적화합니다.
+    fetchMentsAndBookmarks()
+  }, [isAdmin, t])
+
   const availableTags = useMemo(() => {
     const pool = isAdmin ? ments : ments.filter((m) => m.status === 'approved')
     const tagSet = new Set<string>()
@@ -112,8 +119,6 @@ export default function MentListPage() {
     return Array.from(tagSet).sort((a, b) => a.localeCompare(b, 'ko'))
   }, [isAdmin, ments])
 
-  // 현재 선택된 태그에 따라 보여줄 멘트 목록을 필터링합니다.
-  // `ments`, `selectedTag`, `bookmarks` 등이 변경될 때만 재계산됩니다.
   const filteredMents = useMemo(() => {
     const base = isAdmin ? ments : ments.filter((m) => m.status === 'approved')
     if (selectedTag === '__all__') return base
@@ -123,35 +128,24 @@ export default function MentListPage() {
     return base.filter((m) => m.tags.includes(selectedTag))
   }, [isAdmin, ments, selectedTag, bookmarks])
 
-  
-  // --- 사용자 상호작용 핸들러 ---
-
-  /**
-   * 북마크 버튼 클릭 시 실행되는 핸들러.
-   * API 호출 후, 목록을 다시 불러오는 대신 클라이언트 상태(state, localStorage)를 직접 수정하여
-   * 즉각적인 UI 피드백을 제공합니다 (Optimistic Update와 유사).
-   */
   async function handleToggleBookmark(e: React.MouseEvent, id: string) {
     e.stopPropagation()
     const isBookmarked = bookmarks.includes(id)
     const mentId = Number(id)
     if (isNaN(mentId)) {
-      setError(t('ment.invalidMentId'));
-      return;
+      setError(t('ment.invalidMentId'))
+      return
     }
 
-    // 새로운 북마크 목록을 미리 계산
-    const newBookmarks = isBookmarked ? bookmarks.filter(bId => bId !== id) : [...bookmarks, id];
-    
+    const newBookmarks = isBookmarked ? bookmarks.filter(bId => bId !== id) : [...bookmarks, id]
+
     try {
-      // API 호출
       if (isBookmarked) {
         await deleteBookmark(mentId)
       } else {
         await addBookmark(mentId)
       }
-      
-      // API 호출 성공 시, 상태와 localStorage 업데이트
+
       setBookmarks(newBookmarks)
       localStorage.setItem(STORAGE_KEYS.app.favorites, JSON.stringify(newBookmarks))
       setError(null)
@@ -161,34 +155,27 @@ export default function MentListPage() {
     }
   }
 
-  /**
-   * (관리자) 승인/거절 후 멘트 목록을 다시 불러와 상태를 갱신하는 공통 함수
-   */
   async function refetchAdminMents() {
-    const data = await getPendingMents();
+    const data = await getPendingMents()
     const convertedMents: Ment[] = data.map((item: MentItem) => ({
-      id: String(item.mentId), 
-      ko: item.contentKo, 
+      id: String(item.mentId),
+      ko: item.contentKo,
       lo: parseLaoText(item.contentLo || ''),
-      authorNickname: item.authorNickname || '',
-      tags: item.tag ? item.tag.split(',').map((t: string) => t.trim()) : [], 
+      tags: item.tag ? item.tag.split(',').map((t: string) => t.trim()) : [],
       aiHint: '',
       status: (item.isApproved === 1 ? 'approved' : 'pending') as MentStatus,
       createdAt: new Date(item.createdAt).getTime()
-    }));
-    setMentsState(convertedMents);
-    setError(null);
+    }))
+    setMentsState(convertedMents)
+    setError(null)
   }
 
-  /**
-   * (관리자) 멘트 승인 시 실행되는 핸들러.
-   */
   async function handleApprove(e: React.MouseEvent, id: string, mentId: number) {
     e.stopPropagation()
     setProcessingId(id)
     try {
       await approveMent(mentId)
-      await refetchAdminMents() // 중복 로직을 함수로 대체
+      await refetchAdminMents()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('ment.approveFailed'))
     } finally {
@@ -196,15 +183,12 @@ export default function MentListPage() {
     }
   }
 
-  /**
-   * (관리자) 멘트 거절 시 실행되는 핸들러.
-   */
   async function handleRejectConfirm(e: React.MouseEvent, id: string, mentId: number) {
     e.stopPropagation()
     setProcessingId(id)
     try {
       await rejectMent(mentId)
-      await refetchAdminMents() // 중복 로직을 함수로 대체
+      await refetchAdminMents()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('ment.rejectFailed'))
     } finally {
@@ -212,131 +196,299 @@ export default function MentListPage() {
     }
   }
 
-  // --- 렌더링 ---
+  const getTagColor = (tag: string) => {
+    const colors = [
+      'bg-gradient-to-r from-pink-100 to-pink-200 text-pink-700 border-pink-300',
+      'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-700 border-purple-300',
+      'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 border-blue-300',
+      'bg-gradient-to-r from-green-100 to-green-200 text-green-700 border-green-300',
+      'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-700 border-yellow-300',
+      'bg-gradient-to-r from-indigo-100 to-indigo-200 text-indigo-700 border-indigo-300',
+    ]
+    const index = tag.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+    return colors[index]
+  }
+
   return (
-    <div className="h-full bg-gradient-to-b from-pink-50 to-purple-50">
-      <div className="mx-auto flex h-full max-w-[480px] flex-col">
-        {/* 헤더: 앱 이름, 설정 버튼, 관리자/사용자 모드 토글 버튼 */}
-        <header className="sticky top-0 z-10 border-b border-pink-100 bg-gradient-to-b from-pink-50/90 to-purple-50/70 px-4 pb-3 pt-4 backdrop-blur">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold text-slate-900">{t('common.appName')}</h1>
-              <p className="text-xs text-slate-500">{isAdmin ? t('ment.adminMode') : t('ment.userMode')}</p>
+    <div className="min-h-screen bg-gradient-to-b from-white to-pink-50/30 pb-24">
+      {/* Modern Header */}
+      <div className="sticky top-0 z-20 bg-gradient-to-r from-white via-white to-pink-50/80 backdrop-blur-xl border-b border-pink-100/50 shadow-sm">
+        <div className="max-w-2xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                {t('common.appName')}
+              </h1>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {isAdmin ? t('ment.adminMode') : t('ment.userMode')}
+              </p>
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setShowSettings(true)} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-pink-200 bg-white text-slate-700" aria-label="설정">
-                <Settings className="h-5 w-5" />
-              </button>
+              {/* <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 rounded-xl border border-pink-200 bg-white/80 hover:bg-pink-50 transition-colors"
+              >
+                <SettingsIcon />
+              </button> */}
               {originalIsAdmin && (
-                <button type="button" onClick={() => setIsAdminState((v) => !v)} className={cn('h-10 w-10 rounded-xl border flex items-center justify-center text-xs font-bold', isAdmin ? 'border-purple-300 bg-purple-600 text-white' : 'border-pink-300 bg-pink-50 text-pink-700')} aria-label={isAdmin ? '어드민 모드' : '유저 모드'}>
-                  {isAdmin ? 'A' : 'U'}
+                <button
+                  onClick={() => setIsAdminState(v => !v)}
+                  className={`p-2 rounded-xl border flex items-center justify-center transition-all ${isAdmin
+                      ? 'border-purple-300 bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
+                      : 'border-pink-300 bg-gradient-to-r from-pink-100 to-pink-200 text-pink-700'
+                    }`}
+                >
+                  {isAdmin ? <AdminIcon /> : <UserIcon />}
                 </button>
               )}
             </div>
           </div>
-          {/* 태그 필터링 UI */}
-          <div className="mt-3">
-            <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <button type="button" onClick={() => setSelectedTag('__all__')} className={cn('h-10 shrink-0 rounded-full border px-4 text-sm font-medium', selectedTag === '__all__' ? 'border-purple-200 bg-purple-600 text-white' : 'border-pink-200 bg-white text-slate-700')}>
+
+          {/* Tag Filter with Modern Design */}
+          <div className="relative">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <button
+                onClick={() => setSelectedTag('__all__')}
+                className={`shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition-all ${selectedTag === '__all__'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white border-transparent shadow-lg'
+                    : 'bg-white/80 border-pink-200 text-gray-700 hover:border-pink-300'
+                  }`}
+              >
                 {t('ment.all')}
               </button>
               {!isAdmin && (
-                <button type="button" onClick={() => setSelectedTag('__bookmarks__')} className={cn('flex h-10 shrink-0 items-center gap-1 rounded-full border px-4 text-sm font-medium', selectedTag === '__bookmarks__' ? 'border-pink-600 bg-pink-600 text-white' : 'border-pink-200 bg-white text-slate-700')}>
-                  <Heart className={cn('h-4 w-4', selectedTag === '__bookmarks__' && 'fill-white')} />
+                <button
+                  onClick={() => setSelectedTag('__bookmarks__')}
+                  className={`shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition-all flex items-center gap-2 ${selectedTag === '__bookmarks__'
+                      ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white border-transparent shadow-lg'
+                      : 'bg-white/80 border-pink-200 text-gray-700 hover:border-pink-300'
+                    }`}
+                >
+                  <Heart className={`h-4 w-4 ${selectedTag === '__bookmarks__' ? 'fill-white' : ''}`} />
                   {t('ment.bookmarks')}
                 </button>
               )}
               {availableTags.map((tag) => (
-                <button key={tag} type="button" onClick={() => setSelectedTag(tag)} className={cn('h-10 shrink-0 rounded-full border px-4 text-sm font-medium', selectedTag === tag ? 'border-purple-200 bg-purple-600 text-white' : 'border-pink-200 bg-white text-slate-700')}>
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(tag)}
+                  className={`shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition-all ${selectedTag === tag
+                      ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white border-transparent shadow-lg'
+                      : 'bg-white/80 border-pink-200 text-gray-700 hover:border-pink-300'
+                    }`}
+                >
                   #{translateTag(tag, i18n.language as 'ko' | 'lo')}
                 </button>
               ))}
             </div>
           </div>
-        </header>
+        </div>
+      </div>
 
-        {/* 메인 콘텐츠: 멘트 목록 */}
-        <main className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
-          {loading ? (
-            <div className="rounded-2xl border border-pink-100 bg-white p-4 text-sm text-slate-600 shadow-sm text-center">{t('ment.loadingMents')}</div>
-          ) : error ? (
-            <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-600 shadow-sm">{error}</div>
-          ) : filteredMents.length === 0 ? (
-            <div className="rounded-2xl border border-pink-100 bg-white p-4 text-sm text-slate-600 shadow-sm">{t('ment.noMents')}</div>
-          ) : (
-            <div className="space-y-3">
-              {filteredMents.map((m) => {
+      {/* Main Content */}
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white/80 rounded-2xl border border-pink-100 p-6 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded mb-3"></div>
+                <div className="h-3 bg-gray-200 rounded mb-2 w-3/4"></div>
+                <div className="flex gap-2 mt-4">
+                  <div className="h-6 w-16 bg-gray-200 rounded-full"></div>
+                  <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-2xl p-6 text-center">
+            <div className="h-12 w-12 rounded-full bg-gradient-to-r from-red-500 to-orange-500 flex items-center justify-center mx-auto mb-3">
+              <span className="text-white text-lg">!</span>
+            </div>
+            <p className="text-red-800 font-medium">{error}</p>
+          </div>
+        ) : filteredMents.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-r from-pink-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">💬</span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('ment.noMents')}</h3>
+            <p className="text-gray-600">Start by creating your first ment!</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredMents
+              .sort((a, b) => b.createdAt - a.createdAt) // เพิ่มบรรทัดนี้เพื่อเรียงจากใหม่ไปเก่า
+              .map((m) => {
                 const isPending = m.status === 'pending'
                 const isBookmarked = bookmarks.includes(m.id)
+                const profile = generateRandomProfile(m.id)
+
                 return (
-                  <div key={m.id} role="button" tabIndex={0} onClick={() => !isAdmin && navigate(`/ments/${m.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') !isAdmin && navigate(`/ments/${m.id}`) }} className={cn('relative rounded-2xl border bg-white p-4 shadow-sm', 'border-pink-100')}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-base font-semibold text-slate-900">{m.ko}</p>
-                        <p className="mt-1 text-sm text-slate-500">{m.lo}</p>
-                        {m.authorNickname && (
-                          <p className="mt-2 text-xs text-slate-400">@{m.authorNickname}</p>
-                        )}
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {m.tags.map((t) => (
-                            <span key={t} className="rounded-full bg-pink-50 px-3 py-1 text-xs font-medium text-pink-700">
-                              #{translateTag(t, i18n.language as 'ko' | 'lo')}
-                              
-                            </span>
-                          ))}
-                          {isAdmin && (
-                            <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', m.status === 'approved' && 'bg-green-50 text-green-700', isPending && 'bg-purple-50 text-purple-700', m.status === 'rejected' && 'bg-slate-100 text-slate-600')}>
-                              {m.status}
-                            </span>
-                          )}
+                  <div
+                    key={m.id}
+                    onClick={() => !isAdmin && navigate(`/ments/${m.id}`)}
+                    className={`bg-white/90 backdrop-blur-sm rounded-2xl border shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl cursor-pointer ${isPending ? 'border-purple-200' : 'border-pink-100'
+                      }`}
+                  >
+                    <div className="p-5">
+                      {/* Profile Header */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className={`h-10 w-10 rounded-full ${profile.color} flex items-center justify-center text-white font-bold text-lg`}>
+                          {profile.emoji}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{profile.name}</h3>
+                          <p className="text-xs text-gray-500">{profile.id}</p>
                         </div>
                       </div>
-                      {!isAdmin && (
-                        <button type="button" aria-label="북마크" onClick={(e) => handleToggleBookmark(e, m.id)} className={cn('inline-flex h-11 w-11 items-center justify-center rounded-xl border', isBookmarked ? 'border-pink-200 bg-pink-50 text-pink-600' : 'border-pink-200 bg-white text-slate-500')}>
-                          <Heart className={cn('h-5 w-5', isBookmarked && 'fill-pink-600')} />
-                        </button>
+
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="text-base font-semibold text-gray-900 leading-relaxed">
+                            {m.ko}
+                          </p>
+                          {m.lo && (
+                            <p className="mt-3 text-sm text-gray-600 bg-gradient-to-r from-blue-50 to-blue-50/50 rounded-xl p-3 border border-blue-100">
+                              {m.lo}
+                            </p>
+                          )}
+
+                          {/* Tags Section */}
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {m.tags.map((t) => (
+                              <span
+                                key={t}
+                                className={`px-3 py-1.5 rounded-full border text-xs font-medium ${getTagColor(t)}`}
+                              >
+                                #{translateTag(t, i18n.language as 'ko' | 'lo')}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Bookmark Button - Moved to bottom */}
+                      </div>
+                    </div>
+
+                    {/* Bottom Actions Bar */}
+                    <div className={`px-5 py-3 border-t ${isPending ? 'border-purple-100' : 'border-pink-100'} bg-gradient-to-r from-white to-pink-50/30`}>
+                      <div className="flex items-center justify-between">
+                        {/* Bookmark Button - Now at bottom */}
+                        {!isAdmin && (
+                          <button
+                            onClick={(e) => handleToggleBookmark(e, m.id)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 ${isBookmarked
+                                ? 'bg-gradient-to-r from-pink-50 to-pink-100 border border-pink-300 text-pink-600 shadow-sm'
+                                : 'bg-white/80 border border-pink-200 text-gray-500 hover:border-pink-300 hover:bg-pink-50'
+                              }`}
+                          >
+                            <Heart className={`h-4 w-4 ${isBookmarked ? 'fill-pink-600' : ''}`} />
+                            <span className="text-sm font-medium">
+                              {isBookmarked ? t('ment.bookmarked') : t('ment.bookmark')}
+                            </span>
+                          </button>
+                        )}
+
+                        {/* Status Badge */}
+                        {isAdmin && (
+                          <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${m.status === 'approved'
+                              ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-700 border border-green-300'
+                              : isPending
+                                ? 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-700 border border-purple-300'
+                                : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border border-gray-300'
+                            }`}>
+                            {m.status}
+                          </span>
+                        )}
+
+                        {/* Timestamp */}
+                        <span className="text-xs text-gray-500">
+                          {new Date(m.createdAt).toLocaleDateString('ko-KR', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+
+                      {/* Admin Actions - Moved to bottom */}
+                      {isAdmin && isPending && (
+                        <div className="mt-3 pt-3 border-t border-purple-100">
+                          <div className="flex gap-3">
+                            <button
+                              onClick={(e) => handleApprove(e, m.id, Number(m.id))}
+                              disabled={processingId === m.id}
+                              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg"
+                            >
+                              {processingId === m.id ? (
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                              ) : (
+                                <>
+                                  <CheckIcon />
+                                  {t('ment.approve')}
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => handleRejectConfirm(e, m.id, Number(m.id))}
+                              disabled={processingId === m.id}
+                              className="flex-1 py-2.5 rounded-xl border-2 border-red-300 bg-gradient-to-r from-red-50 to-white text-red-700 font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:bg-red-50"
+                            >
+                              {processingId === m.id ? (
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-300 border-t-red-600"></div>
+                              ) : (
+                                <>
+                                  <Trash2 className="h-4 w-4" />
+                                  {t('ment.reject')}
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
-                    {/* 관리자 모드이고, 멘트가 'pending' 상태일 때만 승인/거절 버튼 표시 */}
-                    {isAdmin && isPending && (
-                      <div className="mt-4 flex gap-2">
-                        <button type="button" onClick={(e) => handleApprove(e, m.id, Number(m.id))} disabled={processingId === m.id} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-purple-600 text-sm font-semibold text-white disabled:opacity-50">
-                          <Check className="h-5 w-5" />
-                          {processingId === m.id ? t('common.loading') : t('ment.approve')}
-                        </button>
-                        <button type="button" onClick={(e) => handleRejectConfirm(e, m.id, Number(m.id))} disabled={processingId === m.id} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-pink-200 bg-white text-sm font-semibold text-slate-700 disabled:opacity-50">
-                          <Trash2 className="h-5 w-5" />
-                          {processingId === m.id ? t('common.loading') : t('ment.reject')}
-                        </button>
-                      </div>
-                    )}
-                    {/* 작성자 아바타 + 닉네임: 우측 하단에 절대 위치 */}
-                    {m.authorNickname && (
-                      <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2 rounded-full bg-white/0 px-2 py-1">
-                        <User className="h-5 w-5 text-slate-400" />
-                        <span className="text-xs text-slate-500">@{m.authorNickname}</span>
-                      </div>
-                    )}
                   </div>
                 )
               })}
-            </div>
-          )}
-        </main>
+          </div>
+        )}
       </div>
 
-      {/* 사용자 모드일 때만 '멘트 추가' 플로팅 버튼 표시 */}
+      {/* Floating Add Button */}
       {!isAdmin && (
-        <button type="button" onClick={() => navigate('/ments/new')} className="fixed bottom-6 right-6 z-20 inline-flex h-14 w-14 items-center justify-center rounded-full bg-pink-600 text-white shadow-lg hover:bg-pink-700 active:scale-95 transition-transform" aria-label="멘트 추가">
+        <button
+          onClick={() => navigate('/ments/new')}
+          className="fixed bottom-6 right-6 z-20 h-14 w-14 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-2xl hover:shadow-3xl transform hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center group"
+        >
           <Plus className="h-6 w-6" />
+          {/* Shine Effect */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-45 group-hover:animate-shine"></div>
         </button>
       )}
 
-      {/* 설정 모달 */}
-      <SettingsModal 
+      <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
+
+      <style>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        @keyframes shine {
+          0% { transform: translateX(-100%) skewX(-45deg); }
+          100% { transform: translateX(200%) skewX(-45deg); }
+        }
+        .animate-shine {
+          animation: shine 2s infinite;
+        }
+      `}</style>
     </div>
   )
 }

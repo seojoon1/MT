@@ -164,6 +164,7 @@ export default function MentDetailPage() {
         {successMessage && <Alert variant="success" className="mb-4">{successMessage}</Alert>}
 
         <Card>
+          {/* <div className="absolute inset-0 bg-[url('../public/bg.png')] opacity-30"></div> */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {/* 한국어 */}
             <div className="rounded-2xl bg-pink-50 p-4">

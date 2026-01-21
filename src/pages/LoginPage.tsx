@@ -1,64 +1,35 @@
+// src/pages/LoginPage.tsx (แก้ไขแล้ว)
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Lock, User, LogIn } from 'lucide-react'
+import { Lock, User, LogIn, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { setAuthed } from '../storage/authStorage'
-import { postLogin, postRegister } from '../services/api'
+import { postLogin } from '../services/api'
 import { cn } from '../utils/cn'
 import { ROUTES } from '../constants'
-import { AxiosError } from 'axios'
 import type { AuthResponse } from '../types'
 
-
-// 현재 활성화된 폼 탭을 나타내는 타입 (로그인 또는 회원가입)
-type TabKey = 'login' | 'signup'
-
-/**
- * @description
- * 자체 계정(ID/PW)을 사용한 로그인 및 회원가입을 처리하는 페이지 컴포넌트입니다.
- * 사용자는 탭을 통해 로그인과 회원가입 폼을 전환할 수 있습니다.
- * 또한, Google 계정으로의 인증을 시작하는 페이지('/auth/start')로 이동하는 버튼을 제공합니다.
- * 
- * 
- */
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { t } = useTranslation() // 다국어 지원을 위한 i18next hook
+  const { t } = useTranslation()
 
-  // 'login' 또는 'signup' 탭 상태 관리
-  const [tab, setTab] = useState<TabKey>('login')
-
-  // --- 상태 변수 정의 ---
-  // 로그인 폼 입력 값
-  const [loginLocalId, setLoginLocalId] = useState('')
-  const [loginPassword, setLoginPassword] = useState('')
-
-  // 회원가입 폼 입력 값
-  const [signupLocalId, setSignupLocalId] = useState('')
-  const [signupEmail, setSignupEmail] = useState('')
-  const [signupUsername, setSignupUsername] = useState('')
-  const [signupPassword, setSignupPassword] = useState('')
-  const [signupPasswordConfirm, setSignupPasswordConfirm] = useState('')
-
-  // API 요청 실패 시 표시할 에러 메시지
+  // Login form states
+  const [localId, setLocalId] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  // API 요청 진행 중 여부를 나타내는 로딩 상태
   const [isLoading, setIsLoading] = useState(false)
 
-  // 에러 메시지 초기화 함수
+  // Error reset function
   function resetError() {
     setError(null)
   }
 
   /**
    * 인증 성공 후 공통 처리 로직
-   * @param localId 사용자의 로컬 ID
-   * @param response API로부터 받은 인증 응답 (토큰 포함)
    */
   function completeAuthAndGo(localId: string, response: AuthResponse) {
     const token = response.accessToken
     if (token) {
-      // 인증 정보(사용자 정보, 토큰)를 스토리지에 저장
       setAuthed(
         { 
           localId, 
@@ -70,34 +41,30 @@ export default function LoginPage() {
           refreshToken: response.refreshToken 
         }
       )
-      // 메인 페이지(멘트 목록)로 이동
       navigate(ROUTES.MENTS)
     }
   }
 
   /**
-   * 로그인 폼 제출 시 실행되는 핸들러
+   * 로그인 폼 제출 핸들러
    */
-  async function onLoginSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     resetError()
 
-    const localId = loginLocalId.trim()
-    const password = loginPassword
+    const trimmedLocalId = localId.trim()
 
-    if (!localId || !password) {
+    if (!trimmedLocalId || !password) {
       setError(t('auth.userIdAndPasswordRequired'))
       return
     }
 
     setIsLoading(true)
     try {
-      // API를 통해 로그인을 요청
-      const response = await postLogin({ localId, password })
+      const response = await postLogin({ localId: trimmedLocalId, password })
       
       if (response.accessToken) {
-        // 인증 성공 시 공통 처리 함수 호출
-        completeAuthAndGo(localId, response)
+        completeAuthAndGo(trimmedLocalId, response)
       } else {
         setError(t('auth.loginFailed'))
       }
@@ -108,187 +75,143 @@ export default function LoginPage() {
     }
   }
 
-  /**
-   * 회원가입 폼 제출 시 실행되는 핸들러
-   */
-  async function onSignupSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    resetError()
-
-    // 폼 입력값 유효성 검사
-    const localId = signupLocalId.trim()
-    const email = signupEmail.trim()
-    const username = signupUsername.trim()
-    const password = signupPassword
-    const confirm = signupPasswordConfirm
-
-    if (!localId || !email || !username || !password || !confirm) {
-      setError(t('auth.allFieldsRequired'))
-      return
-    }
-    if (localId.length < 3) {
-      setError(t('auth.userIdMinLength'))
-      return
-    }
-    if (username.length < 2) {
-      setError(t('auth.minCharacters', { count: 2 }))
-      return
-    }
-    if (password.length < 6) {
-      setError(t('auth.minCharacters', { count: 6 }))
-      return
-    }
-    if (password !== confirm) {
-      setError(t('auth.passwordMismatch'))
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      // 1. API를 통해 회원가입을 요청
-      const registerRes = await postRegister({ 
-        localId, 
-        password, 
-        nickname: username, 
-        email 
-      })
-      
-      if (registerRes.accessToken) {
-        // 회원가입 응답에 토큰이 포함된 경우, 바로 로그인 처리
-        completeAuthAndGo(localId, registerRes)
-      } else {
-        // 2. 회원가입은 성공했지만 토큰이 없는 경우, 별도로 로그인을 다시 요청 (UX 향상)
-        const loginRes = await postLogin({ localId, password })
-        completeAuthAndGo(localId, loginRes)
-      }
-    } catch (e) {
-      // API에서 반환된 특정 에러 메시지에 따라 분기 처리
-      const error = e as AxiosError
-      const errorMessage = error.response?.data as any
-      const message = typeof errorMessage === 'string' ? errorMessage : errorMessage?.message
-      
-      switch (message) {
-        case '이미 사용 중인 ID입니다.':
-          setError(t('auth.alreadyExistUserId'))
-          break
-        case '이미 사용 중인 이메일입니다.':
-          setError(t('auth.alreadyExistEmail'))
-          break
-        default:
-          setError(message || t('auth.signupRequestError'))
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   return (
-    <div className="min-h-full bg-gradient-to-b from-pink-50 to-purple-50">
-      <div className="mx-auto flex min-h-full max-w-[480px] flex-col px-4 pb-8 pt-8">
-        <div className="rounded-2xl border border-pink-100 bg-white p-4 shadow-sm">
-          <h1 className="text-lg font-semibold text-slate-900">{t('auth.login')}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t('auth.loginDescription')}</p>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+      {/* Background Pattern */}
+      {/* <div className="absolute inset-0 bg-[url('../public/bg.png')] opacity-30"></div> */}
+      
+      <div className="relative mx-auto flex min-h-screen max-w-md flex-col px-4 pb-8 pt-16">
+        {/* Hero Section */}
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 shadow-lg">
+            <Sparkles className="h-10 w-10 text-white" />
+          </div>
+          <h1 className="mb-2 text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+            {t('common.appName')}
+          </h1>
+          <p className="text-sm text-gray-600">
+            {t('auth.loginDescription')}
+          </p>
+        </div>
 
-          {/* 탭 전환 UI */}
-          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-pink-50 p-1">
+        {/* Login Card */}
+        <div className="rounded-2xl border border-pink-100/50 bg-white/80 backdrop-blur-sm p-6 shadow-xl">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-900">{t('auth.login')}</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              {t('auth.loginDescription')}
+            </p>
+          </div>
+
+          {/* Signup Link */}
+          <div className="mb-6 text-center">
             <button
               type="button"
-              onClick={() => {
-                setTab('login')
-                resetError()
-              }}
-              className={cn(
-                'h-11 rounded-2xl text-sm font-semibold',
-                tab === 'login' ? 'bg-white text-pink-700 shadow-sm' : 'text-slate-600'
-              )}
+              onClick={() => navigate('/register')}
+              className="text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors"
             >
-              {t('auth.login')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTab('signup')
-                resetError()
-              }}
-              className={cn(
-                'h-11 rounded-2xl text-sm font-semibold',
-                tab === 'signup' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600'
-              )}
-            >
-              {t('auth.signup')}
+              {t('auth.dontHaveAccount') || "Don't have an account? Sign up"}
             </button>
           </div>
 
-          {/* 로그인 폼 */}
-          {tab === 'login' ? (
-            <form onSubmit={onLoginSubmit} className="mt-4 space-y-3">
-              <label className="block">
-                <span className="text-xs font-semibold text-slate-700">{t('auth.userId')}</span>
-                <div className="mt-2 flex h-12 items-center gap-2 rounded-2xl border border-pink-200 bg-white px-3">
-                  <User className="h-5 w-5 text-slate-400" />
-                  <input
-                    value={loginLocalId}
-                    onChange={(e) => setLoginLocalId(e.target.value)}
-                    type="text"
-                    className="h-full w-full bg-transparent text-sm text-slate-900 outline-none"
-                    placeholder={t('auth.enterUserId')}
-                    autoComplete="username"
-                  />
-                </div>
+          <form onSubmit={onSubmit} className="space-y-5">
+            {/* User ID */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                {t('auth.userId')}
               </label>
-
-              <label className="block">
-                <span className="text-xs font-semibold text-slate-700">{t('auth.password')}</span>
-                <div className="mt-2 flex h-12 items-center gap-2 rounded-2xl border border-pink-200 bg-white px-3">
-                  <Lock className="h-5 w-5 text-slate-400" />
-                  <input
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    type="password"
-                    className="h-full w-full bg-transparent text-sm text-slate-900 outline-none"
-                    placeholder="••••••"
-                    autoComplete="current-password"
-                  />
-                </div>
-              </label>
-
-              {error && (
-                <div className="rounded-2xl border border-pink-200 bg-pink-50 p-3 text-sm text-pink-700">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={cn(
-                  'inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-white',
-                  isLoading ? 'bg-pink-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700'
-                )}
-              >
-                {isLoading ? (
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                ) : (
-                  <LogIn className="h-5 w-5" />
-                )}
-                {isLoading ? t('common.loading') : t('auth.login')}
-              </button>
-
               <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200"></div>
+                <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                  <User className="h-5 w-5 text-gray-400" />
                 </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-2 text-slate-500">{t('auth.or')}</span>
-                </div>
+                <input
+                  value={localId}
+                  onChange={(e) => setLocalId(e.target.value)}
+                  type="text"
+                  className="w-full rounded-xl border border-pink-200 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-100 focus:outline-none transition-all"
+                  placeholder={t('auth.enterUserId')}
+                  autoComplete="username"
+                  disabled={isLoading}
+                />
               </div>
+            </div>
 
-              {/* Google OAuth 인증 시작 페이지로 이동하는 버튼 */}
-              <button
-                type="button"
-                onClick={() => navigate('/auth/start')}
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
+            {/* Password */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                {t('auth.password')}
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  type="password"
+                  className="w-full rounded-xl border border-pink-200 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-pink-400 focus:ring-2 focus:ring-pink-100 focus:outline-none transition-all"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="animate-fade-in rounded-xl border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 p-4">
+                <p className="text-sm font-medium text-red-700">
+                  {error}
+                </p>
+              </div>
+            )}
+
+            {/* Login Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={cn(
+                'w-full rounded-xl py-3.5 font-semibold text-white transition-all duration-300',
+                isLoading 
+                  ? 'bg-gradient-to-r from-pink-400 to-purple-400 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 hover:shadow-lg active:scale-95'
+              )}
+            >
+              <div className="flex items-center justify-center gap-2">
+                {isLoading ? (
+                  <>
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <span>{t('common.loading')}</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="h-5 w-5" />
+                    <span>{t('auth.login')}</span>
+                  </>
+                )}
+              </div>
+            </button>
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-white/80 px-3 text-xs text-gray-500 backdrop-blur-sm">
+                  {t('auth.or')}
+                </span>
+              </div>
+            </div>
+
+            {/* Google OAuth Button */}
+            <button
+              type="button"
+              onClick={() => navigate('/auth/start')}
+              disabled={isLoading}
+              className="group w-full rounded-xl border border-gray-300 bg-white py-3.5 font-medium text-gray-700 transition-all hover:border-pink-200 hover:bg-pink-50 hover:shadow-md disabled:opacity-50"
+            >
+              <div className="flex items-center justify-center gap-3">
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
@@ -307,114 +230,35 @@ export default function LoginPage() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                {t('auth.loginWithGoogle')}
-              </button>
-            </form>
-          ) : (
-            /* 회원가입 폼 */
-            <form onSubmit={onSignupSubmit} className="mt-4 space-y-3">
-              <label className="block">
-                <span className="text-xs font-semibold text-slate-700">{t('auth.userId')}</span>
-                <div className="mt-2 flex h-12 items-center gap-2 rounded-2xl border border-pink-200 bg-white px-3">
-                  <User className="h-5 w-5 text-slate-400" />
-                  <input
-                    value={signupLocalId}
-                    onChange={(e) => setSignupLocalId(e.target.value)}
-                    type="text"
-                    className="h-full w-full bg-transparent text-sm text-slate-900 outline-none"
-                    placeholder="아이디 (3자 이상)"
-                    autoComplete="username"
-                  />
-                </div>
-              </label>
+                <span>{t('auth.loginWithGoogle')}</span>
+              </div>
+            </button>
+          </form>
+        </div>
 
-              <label className="block">
-                <span className="text-xs font-semibold text-slate-700">{t('auth.email')}</span>
-                <div className="mt-2 flex h-12 items-center gap-2 rounded-2xl border border-pink-200 bg-white px-3">
-                  <Mail className="h-5 w-5 text-slate-400" />
-                  <input
-                    value={signupEmail}
-                    onChange={(e) => setSignupEmail(e.target.value)}
-                    type="email"
-                    className="h-full w-full bg-transparent text-sm text-slate-900 outline-none"
-                    placeholder={t('auth.enterEmail')}
-                    autoComplete="email"
-                  />
-                </div>
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-semibold text-slate-700">{t('auth.username')}</span>
-                <div className="mt-2 flex h-12 items-center gap-2 rounded-2xl border border-pink-200 bg-white px-3">
-                  <User className="h-5 w-5 text-slate-400" />
-                  <input
-                    value={signupUsername}
-                    onChange={(e) => setSignupUsername(e.target.value)}
-                    type="text"
-                    className="h-full w-full bg-transparent text-sm text-slate-900 outline-none"
-                    placeholder={t('auth.enterUsername')}
-                    autoComplete="nickname"
-                  />
-                </div>
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-semibold text-slate-700">{t('auth.password')} (6자 이상)</span>
-                <div className="mt-2 flex h-12 items-center gap-2 rounded-2xl border border-pink-200 bg-white px-3">
-                  <Lock className="h-5 w-5 text-slate-400" />
-                  <input
-                    value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
-                    type="password"
-                    className="h-full w-full bg-transparent text-sm text-slate-900 outline-none"
-                    placeholder="••••••"
-                    autoComplete="new-password"
-                  />
-                </div>
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-semibold text-slate-700">{t('auth.passwordConfirm')}</span>
-                <div className="mt-2 flex h-12 items-center gap-2 rounded-2xl border border-pink-200 bg-white px-3">
-                  <Lock className="h-5 w-5 text-slate-400" />
-                  <input
-                    value={signupPasswordConfirm}
-                    onChange={(e) => setSignupPasswordConfirm(e.target.value)}
-                    type="password"
-                    className="h-full w-full bg-transparent text-sm text-slate-900 outline-none"
-                    placeholder="••••••"
-                    autoComplete="new-password"
-                  />
-                </div>
-              </label>
-
-              {error && (
-                <div className="rounded-2xl border border-pink-200 bg-pink-50 p-3 text-sm text-pink-700">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={cn(
-                  'inline-flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold text-white',
-                  isLoading ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
-                )}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="mr-2 h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    {t('auth.signup')} 중...
-                  </>
-                ) : (
-                  t('auth.signup')
-                )}
-              </button>
-            </form>
-          )}
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-500">
+            © 2024 {t('common.appName')}. All rights reserved.
+          </p>
         </div>
       </div>
+
+      {/* Custom Styles */}
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+        
+        /* Smooth transitions */
+        * {
+          transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+      `}</style>
     </div>
   )
 }
