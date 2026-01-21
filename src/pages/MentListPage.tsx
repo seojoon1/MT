@@ -83,6 +83,7 @@ export default function MentListPage() {
           id: String(item.mentId),
           ko: item.contentKo,
           lo: parseLaoText(item.contentLo || ''),
+          authorNickname: item.authorNickname || '',
           tags: item.tag ? item.tag.split(',').map((t: string) => t.trim()) : [],
           aiHint: '',
           status: (item.isApproved === 1 ? 'approved' : 'pending') as MentStatus,
