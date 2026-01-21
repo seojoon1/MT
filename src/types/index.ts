@@ -46,6 +46,9 @@ export type RefreshTokenPayload = {
   refreshToken: string
 }
 
+
+
+
 // ============================
 // 멘트 관련 타입
 // ============================

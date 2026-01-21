@@ -1,13 +1,16 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { isAuthed } from './storage/authStorage'
+import { isAuthed, clearAuthed } from './storage/authStorage'
 import { initAuthFromRefresh } from './services/api'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage' // เพิ่ม import
+import HomePage from './pages/HomePage'
 import MentDetailPage from './pages/MentDetailPage'
 import MentEditorPage from './pages/MentEditorPage'
 import MentListPage from './pages/MentListPage'
 import AuthStartPage from './pages/AuthStartPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
+import Navbar from './components/layout/Navbar'
 import './i18n/config'
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
@@ -16,6 +19,30 @@ function RequireAuth({ children }: { children: React.ReactElement }) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
   return children
+}
+
+// Layout เดียวที่มี Navbar เสมอ
+function AppLayout({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = isAuthed();
+  
+  const handleLogout = () => {
+    clearAuthed();
+    window.location.href = '/login';
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
+      {/* Navbar แสดงตลอด */}
+      <Navbar 
+        isAuthenticated={isAuthenticated}
+        username={isAuthenticated ? 'User' : undefined}
+        onLogout={handleLogout}
+      />
+      <main className="py-4">
+        {children}
+      </main>
+    </div>
+  );
 }
 
 export default function App() {
@@ -45,16 +72,61 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/ments" replace />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/auth/start" element={<AuthStartPage />} />
-      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      {/* หน้า Home */}
+      <Route 
+        path="/" 
+        element={
+          <AppLayout>
+            <HomePage />
+          </AppLayout>
+        } 
+      />
+      
+      {/* หน้า Login */}
+      <Route 
+        path="/login" 
+        element={
+          <AppLayout>
+            <LoginPage />
+          </AppLayout>
+        } 
+      />
+      
+      {/* หน้า Register */}
+      <Route 
+        path="/register" 
+        element={
+          <AppLayout>
+            <RegisterPage />
+          </AppLayout>
+        } 
+      />
+      
+      <Route 
+        path="/auth/start" 
+        element={
+          <AppLayout>
+            <AuthStartPage />
+          </AppLayout>
+        } 
+      />
+      <Route 
+        path="/auth/callback" 
+        element={
+          <AppLayout>
+            <AuthCallbackPage />
+          </AppLayout>
+        } 
+      />
 
+      {/* Routes ที่ต้องล็อกอิน */}
       <Route
         path="/ments"
         element={
           <RequireAuth>
-            <MentListPage />
+            <AppLayout>
+              <MentListPage />
+            </AppLayout>
           </RequireAuth>
         }
       />
@@ -62,7 +134,9 @@ export default function App() {
         path="/ments/new"
         element={
           <RequireAuth>
-            <MentEditorPage />
+            <AppLayout>
+              <MentEditorPage />
+            </AppLayout>
           </RequireAuth>
         }
       />
@@ -70,12 +144,15 @@ export default function App() {
         path="/ments/:id"
         element={
           <RequireAuth>
-            <MentDetailPage />
+            <AppLayout>
+              <MentDetailPage />
+            </AppLayout>
           </RequireAuth>
         }
       />
 
-      <Route path="*" element={<Navigate to="/ments" replace />} />
+      {/* 404 - Redirect to Home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
