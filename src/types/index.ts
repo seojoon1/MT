@@ -65,6 +65,8 @@ export type Ment = {
   tags: Tag[]
   /** 작성자 닉네임(서버 응답에 따라 optional) */
   authorNickname?: string
+  /** 서버에서 제공되는 북마크(즐겨찾기) 카운트 */
+  bookmarkCount?: number
   aiHint: string
   status: MentStatus
   createdAt: number
@@ -77,6 +79,8 @@ export type MentItem = {
   contentLo?: string
   tag: string
   authorNickname: string
+  /** 서버 응답에 포함될 수 있는 북마크 카운트 */
+  bookmarkCount?: number
   createdAt: string
   isApproved: number
   reason: string | null

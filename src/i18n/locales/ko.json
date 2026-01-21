@@ -94,7 +94,7 @@
     "oneItem": "1개",
     "pendingApproval": "승인 대기 중인 멘트예요. 관리자 승인 후 노출됩니다.",
     "adminMode": "관리자 모드: 전체/승인/대기/거절 표시",
-    "userMode": "使用模式：只显示已批准的Ment",
+    "userMode": "유저 모드: 승인된 멘트만 표시",
     "loadingMentsFailed": "멘트를 불러오는데 실패했습니다.",
     "invalidMentId": "잘못된 멘트 ID입니다.",
     "bookmarkAddFailed": "북마크 추가 실패",

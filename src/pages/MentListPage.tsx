@@ -32,13 +32,19 @@ const randomNames = ['Anonymous', 'Mystery User', 'Secret Admirer', 'Hidden Voic
 const randomColors = ['bg-pink-500', 'bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-indigo-500']
 const randomEmojis = ['😊', '🥰', '😇', '🤗', '🤫', '😌', '😉', '🤭', '😘', '😍']
 
-const generateRandomProfile = (seed: string) => {
+const generateRandomProfile = (seed: string, authorNickname?: string) => {
   const hash = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  const useAuthor = authorNickname && authorNickname.trim() !== ''
+  const name = useAuthor ? authorNickname! : randomNames[hash % randomNames.length]
+  const id = useAuthor
+    ? `user_${authorNickname!.replace(/\s+/g, '_')}`
+    : `user_${hash.toString(16).slice(0, 6)}`
+
   return {
-    name: randomNames[hash % randomNames.length],
+    name,
     color: randomColors[hash % randomColors.length],
     emoji: randomEmojis[hash % randomEmojis.length],
-    id: `user_${hash.toString(16).slice(0, 6)}`
+    id
   }
 }
 
@@ -79,11 +85,14 @@ export default function MentListPage() {
       try {
         const mentData = isAdmin ? await getPendingMents() : await getMentList()
 
+        // 변경: API의 `authorNickname`과 `bookmarkCount`를 로컬 멘트 객체에 포함시킵니다.
+        // (이전에는 랜덤 프로필만 사용했음)
         const convertedMents: Ment[] = mentData.map((item: MentItem) => ({
           id: String(item.mentId),
           ko: item.contentKo,
           lo: parseLaoText(item.contentLo || ''),
-          authorNickname: item.authorNickname || '',
+          authorNickname: item.authorNickname || '', // API 닉네임 보존
+          bookmarkCount: Number(item.bookmarkCount ?? 0), // 변경: 북마크 카운트 매핑
           tags: item.tag ? item.tag.split(',').map((t: string) => t.trim()) : [],
           aiHint: '',
           status: (item.isApproved === 1 ? 'approved' : 'pending') as MentStatus,
@@ -159,6 +168,8 @@ export default function MentListPage() {
     const data = await getPendingMents()
     const convertedMents: Ment[] = data.map((item: MentItem) => ({
       id: String(item.mentId),
+      authorNickname: item.authorNickname || '',
+      bookmarkCount: Number(item.bookmarkCount ?? 0), // 변경: 북마크 카운트 포함
       ko: item.contentKo,
       lo: parseLaoText(item.contentLo || ''),
       tags: item.tag ? item.tag.split(',').map((t: string) => t.trim()) : [],
@@ -319,10 +330,11 @@ export default function MentListPage() {
           <div className="space-y-4">
             {filteredMents
               .sort((a, b) => b.createdAt - a.createdAt) // เพิ่มบรรทัดนี้เพื่อเรียงจากใหม่ไปเก่า
-              .map((m) => {
+                .map((m) => {
                 const isPending = m.status === 'pending'
                 const isBookmarked = bookmarks.includes(m.id)
-                const profile = generateRandomProfile(m.id)
+                // 변경: 서버에서 온 authorNickname을 프로필에 사용
+                const profile = generateRandomProfile(m.id, m.authorNickname)
 
                 return (
                   <div
@@ -403,14 +415,21 @@ export default function MentListPage() {
                         )}
 
                         {/* Timestamp */}
-                        <span className="text-xs text-gray-500">
-                          {new Date(m.createdAt).toLocaleDateString('ko-KR', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500">
+                            {new Date(m.createdAt).toLocaleDateString('ko-KR', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                          {/* 변경: 각 멘트의 bookmarkCount 표시 (서버 필드 사용) */}
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <Heart className="h-3 w-3" />
+                            {m.bookmarkCount ?? 0}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Admin Actions - Moved to bottom */}
