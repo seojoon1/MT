@@ -16,7 +16,7 @@ import type { AuthResponse, MentItem, TranslateResponse, ApiInit, BookmarkItem, 
 
 // Axios config에 커스텀 플래그를 추가하기 위한 타입 확장
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
-  _retry?: boolean // 토큰 갱신 후 재시도 여부를 나타내는 플래그
+  _retry?: boolean // 토큰 갱신 후 재시도 여부를 나타내는 플래그ㅌ
   skipAuth?: boolean // 인증 헤더(Access Token)를 생략할지 여부를 나타내는 플래그
 }
 
@@ -222,7 +222,11 @@ export async function exchangeCodeForToken(code: string): Promise<AuthResponse> 
 
 /** 전체 '멘트' 목록을 조회합니다. */
 export async function getMentList(): Promise<MentItem[]> {
-  return apiRequest<MentItem[]>('/ment/list', { method: 'GET' })
+  const list = await apiRequest<MentItem[]>('/ment/list', { method: 'GET' })
+  return list.map((item) => ({
+    ...item,
+    contentLo: item.contentLo ? parseTranslationContent(item.contentLo) : item.contentLo,
+  }))
 }
 
 /** 새로운 '멘트'를 추가(요청)합니다. */
@@ -235,18 +239,94 @@ export async function addComment(payload: AddCommentPayload): Promise<{ tag: str
 
 /** '멘트'를 번역합니다. */
 export async function translateComment(payload: TranslatePayload): Promise<string> {
-  const response = await apiRequest<TranslateResponse>('/translate', { 
-    method: 'POST', 
-    body: payload 
+  const response = await apiRequest<TranslateResponse>('/translate', {
+    method: 'POST',
+    body: payload,
   })
-  
-  // 백엔드에서 content가 JSON 문자열로 오는 경우를 대비한 파싱 로직
-  try {
-    const parsed = JSON.parse(response.content) as { translation?: string }
-    return parsed.translation || ''
-  } catch {
+
+  return parseTranslationContent(response.content)
+}
+
+/**
+ * Translate API의 `content` 필드를 안정적으로 파싱합니다.
+ * 지원되는 형태:
+ * - 이미 문자열인 번역 텍스트
+ * - JSON 문자열: "{ \"translation\": \"...\" }"
+ * - 중첩된 JSON (여러 번 이스케이프된 문자열)
+ * - 객체 형태: { translation: string } 또는 { content: string }
+ */
+function parseTranslationContent(content: unknown): string {
+  if (content === null || content === undefined) return ''
+
+  // 이미 객체인 경우
+  if (typeof content === 'object') {
+    const obj = content as Record<string, unknown>
+    if (typeof obj.translation === 'string') return obj.translation
+    if (typeof obj.content === 'string') return parseTranslationContent(obj.content)
+    // 첫 번째로 발견되는 문자열 값을 반환
+    for (const k of Object.keys(obj)) {
+      const v = obj[k]
+      if (typeof v === 'string') return v
+    }
     return ''
   }
+
+  // 문자열인 경우: JSON으로 파싱을 시도하고, 필요하면 여러 번 언랩
+  if (typeof content === 'string') {
+    let str = content.trim()
+
+    // 코드 블록 ```json ... ``` 형태로 감싸져 있는 경우 안의 내용을 추출
+    if (str.startsWith('```')) {
+      // 첫 번째 줄(예: ```json) 이후부터 마지막 ``` 이전까지 가져옵니다.
+      const parts = str.split('\n')
+      // remove first line if it starts with ```
+      if (parts.length >= 2) {
+        // find last line that is ``` and remove it
+        if (parts[parts.length - 1].trim() === '```') {
+          parts.pop()
+        }
+        parts.shift()
+        str = parts.join('\n').trim()
+      }
+    }
+
+    // 최대 3회까지 중첩 JSON을 언랩합니다.
+    for (let i = 0; i < 3; i++) {
+      if (!str) return ''
+      // 빠른 힌트: JSON 객체/배열로 보이면 파싱 시도
+      const first = str[0]
+      if (first === '{' || first === '[' || first === '"') {
+        try {
+          const parsed = JSON.parse(str)
+          if (typeof parsed === 'string') {
+            str = parsed.trim()
+            continue
+          }
+          if (typeof parsed === 'object' && parsed !== null) {
+            const obj = parsed as Record<string, unknown>
+            if (typeof obj.translation === 'string') return obj.translation
+            if (typeof obj.content === 'string') return parseTranslationContent(obj.content)
+            for (const k of Object.keys(obj)) {
+              const v = obj[k]
+              if (typeof v === 'string') return v
+            }
+            return ''
+          }
+          // 숫자/불리언 등 원시값이 나오면 문자열로 반환
+          return String(parsed)
+        } catch {
+          // 파싱 실패하면 그대로 반환
+          return str
+        }
+      }
+
+      // 문자열이 일반 텍스트라면 바로 반환
+      return str
+    }
+    return str
+  }
+
+  return ''
 }
 
 /** 북마크를 추가합니다. */
@@ -280,7 +360,11 @@ export async function getProfile(): Promise<Profile> {
 
 /** (관리자) 승인 대기 중인 '멘트' 목록을 조회합니다. */
 export async function getPendingMents(): Promise<MentItem[]> {
-  return apiRequest<MentItem[]>('/admin/ment/pending', { method: 'GET' })
+  const list = await apiRequest<MentItem[]>('/admin/ment/pending', { method: 'GET' })
+  return list.map((item) => ({
+    ...item,
+    contentLo: item.contentLo ? parseTranslationContent(item.contentLo) : item.contentLo,
+  }))
 }
 
 /** (관리자) 특정 '멘트'를 승인합니다. */
