@@ -167,7 +167,7 @@ export default function MentEditorPage() {
             <div className="p-5">
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-10 w-10 rounded-full bg-gradient-to-r from-pink-500 to-pink-600 flex items-center justify-center">
-                  <span className="text-white font-bold">KR</span>
+                  <span className="text-white font-bold">{t('ment.country')}</span>
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">{t('ment.korean')}</h3>
