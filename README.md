@@ -1,111 +1,69 @@
-# Laos Flirt - 웹 애플리케이션 프런트엔드
+# FM (Ment) — 프로젝트 개요 및 주요 로직
 
-## 1. 프로젝트 개요
+간단 설명
+- 멘트(Ment)를 등록/조회/북마크하고, 관리자가 승인/거절하는 웹 애플리케이션입니다. 등록된 멘트는 제미나이 api를 통해 자동 번역됩니다.
+- 기술 스택: React + TypeScript + Vite + TailwindCSS
+- 중앙 API 클라이언트: `src/services/api.ts` (Axios 기반)
 
-**Laos Flirt**는 라오스 사용자를 위한 소셜 상호작용 웹 애플리케이션의 프런트엔드 프로젝트입니다. 사용자는 회원가입 및 로그인을 통해 시스템에 접근하고, 'Ment'라는 핵심 콘텐츠를 생성하고 다른 사용자와 공유할 수 있습니다.
+빠른 시작
+- 개발 서버
 
-이 프로젝트는 현대적인 웹 개발 기술 스택을 기반으로 구축되었으며, 깔끔하고 직관적인 사용자 인터페이스를 제공하는 것을 목표로 합니다. 또한, 한국어와 라오스어를 모두 지원하는 다국어 기능을 통해 현지 사용자의 접근성을 높였습니다.
-
-## 2. 주요 기능
-
-- **사용자 인증**:
-  - JWT (JSON Web Token) 기반의 안전한 로그인 및 회원가입 기능.
-  - Refresh Token을 활용한 자동 로그인 유지 기능 (`initAuthFromRefresh`).
-  - 인증이 필요한 페이지에 접근 시 자동으로 로그인 페이지로 리디렉션하는 보호된 라우트 (`RequireAuth`).
-
-- **Ment (멘트) 관리**:
-  - 사용자는 자신만의 'Ment'를 작성, 조회, 수정할 수 있습니다 (CRUD).
-  - 전체 'Ment' 목록을 볼 수 있는 리스트 페이지 (`/ments`).
-  - 'Ment'의 상세 내용을 확인하는 상세 페이지 (`/ments/:id`).
-
-- **마이페이지**:
-  - 로그인한 사용자는 자신의 프로필 정보 등을 확인할 수 있는 개인화된 공간 (`/mypage`).
-
-- **다국어 지원 (i18n)**:
-  - `i18next` 라이브러리를 사용하여 한국어(ko)와 라오스어(lo)를 지원.
-  - 사용자의 브라우저 설정이나 선택에 따라 언어 전환 가능.
-
-- **반응형 UI**:
-  - Tailwind CSS를 활용하여 모바일, 태블릿, 데스크톱 등 다양한 화면 크기에 대응하는 반응형 레이아웃을 제공합니다.
-
-## 3. 기술 스택
-
-- **프레임워크**: React (v19)
-- **언어**: TypeScript
-- **빌드 도구**: Vite
-- **라우팅**: React Router (v7)
-- **상태 관리**: React Hooks (useState, useEffect, useContext)
-- **스타일링**: Tailwind CSS
-- **HTTP 클라이언트**: Axios
-- **다국어**: i18next, react-i18next
-- **아이콘**: Lucide-React
-- **코드 품질**: ESLint
-
-## 4. 프로젝트 구조
-
-```
-src/
-├── App.tsx             # 메인 애플리케이션 컴포넌트, 라우팅 정의
-├── main.tsx            # 애플리케이션 진입점
-├── assets/             # 이미지, 폰트 등 정적 에셋
-├── components/         # 재사용 가능한 UI 컴포넌트
-│   ├── common/         # 버튼, 인풋 등 범용 컴포넌트
-│   └── layout/         # Header, Navbar 등 레이아웃 컴포넌트
-├── constants/          # 애플리케이션 전역 상수
-├── i18n/               # 다국어 설정 및 번역 파일
-│   ├── config.ts       # i18next 초기화 설정
-│   └── locales/        # 언어별 번역 (ko.json, lo.json)
-├── pages/              # 각 라우트에 해당하는 페이지 컴포넌트
-│   ├── LoginPage.tsx
-│   ├── HomePage.tsx
-│   └── MentListPage.tsx
-├── services/           # API 연동 및 비즈니스 로직
-│   ├── api.ts          # Axios 인스턴스 및 API 호출 함수
-│   └── authService.ts  # 인증 관련 서비스 로직
-├── storage/            # 로컬 스토리지/세션 스토리지 관리
-│   └── authStorage.ts  # 인증 토큰 저장/조회/삭제
-├── types/              # TypeScript 타입 및 인터페이스 정의
-└── utils/              # 유틸리티 함수
+```bash
+npm install
+npm run dev
 ```
 
-## 5. 시작하기
+- 빌드
 
-### 5.1. 전제 조건
+```bash
+npm run build
+```
 
-- [Node.js](https://nodejs.org/) (v18 이상 권장)
-- [npm](https://www.npmjs.com/) 또는 [yarn](https://yarnpkg.com/)
+환경 변수
+- `VITE_API_BASE_URL`을 설정해야 백엔드 API에 연결됩니다.
 
-### 5.2. 설치 및 실행
+핵심 파일 및 역할
+- `src/services/api.ts` — Axios 클라이언트를 생성하고 전역 API 호출을 관리합니다.
+  - 인증 토큰 자동 추가 및 401 발생 시 Refresh Token으로 자동 갱신 로직 포함
+  - 번역 응답의 다양한 포맷(plain string, JSON 문자열, fenced code block)을 안정적으로 파싱하는 `parseTranslationContent` 보유
+  - 주요 함수: `apiRequest`, `getMentList`, `getPendingMents`, `translateComment`, `initAuthFromRefresh`
+- `src/storage/authStorage.ts` — Access/Refresh 토큰 및 사용자 정보 저장·조회 로직
+- `src/pages/*` — 앱의 화면 구성 (로그인, 멘트 목록, 멘트 작성, 상세, 관리자 대기 목록 등)
+- `src/components/*` — 재사용 UI 컴포넌트 및 레이아웃
 
-1.  **프로젝트 클론**:
-    ```bash
-    git clone <저장소_URL>
-    cd Laos_Frontend_Flirt
-    ```
+중요 로직 요약
 
-2.  **의존성 설치**:
-    ```bash
-    npm install
-    ```
+1) 인증 및 세션 복원
+- 앱 초기화 시 `initAuthFromRefresh`를 통해 로컬의 Refresh Token으로 Access Token 재발급을 시도합니다.
+- Access Token은 요청 헤더에 자동 첨부되며, 만료 시 인터셉터가 재발급 후 실패했던 요청을 자동 재시도합니다.
 
-3.  **개발 서버 실행**:
-    ```bash
-    npm run dev
-    ```
-    서버가 실행되면 브라우저에서 `http://localhost:5173` (또는 Vite가 지정한 다른 포트)으로 접속하여 애플리케이션을 확인할 수 있습니다.
+2) 번역(content) 파싱 안정성
+- 백엔드에서 반환하는 `content` 필드는 여러 형태로 올 수 있습니다:
+  - 단순 문자열
+  - JSON 문자열: `{"translation":"..."}`
+  - fenced code block (```json ... ```)
+  - 중첩 이스케이프된 JSON
+- 이를 안전하게 처리하기 위해 `parseTranslationContent`가 도입되었습니다. 이 유틸은 코드블록을 벗겨내고(```json ... ```), 중첩된 JSON을 최대 수 회까지 언랩하여 최종 번역 문자열을 반환합니다.
 
-### 5.3. 주요 스크립트
+3) 멘트 목록 전처리
+- `getMentList`와 `getPendingMents`는 서버 응답의 `contentLo`를 받아 `parseTranslationContent`로 정리한 후 반환합니다. UI는 항상 정제된 문자열을 기대할 수 있습니다.
 
-- `npm run dev`: 개발 모드로 Vite 서버를 시작합니다.
-- `npm run build`: 프로덕션용으로 애플리케이션을 빌드합니다. 결과물은 `dist` 폴더에 생성됩니다.
-- `npm run lint`: ESLint를 사용하여 코드 스타일 및 오류를 검사합니다.
-- `npm run preview`: 프로덕션 빌드 결과물을 로컬에서 미리 확인합니다.
+4) 관리자 워크플로우
+- 관리자 전용 엔드포인트(`getPendingMents`, `approveMent`, `rejectMent`)를 통해 승인/거절 작업을 수행합니다.
+- 클라이언트는 관리자 여부를 간단히 체크하여 UI를 분기하지만, 실제 권한 검증은 서버가 책임집니다.
 
-## 6. 핵심 로직 흐름
+개발·운영 팁
+- 로컬 개발 시 Vite의 프록시 설정을 확인하여 API 호출이 올바르게 전달되는지 확인하세요 (`vite.config.ts`).
+- i18n 설정은 `src/i18n/*`에 있으며, 언어별 문자열은 `src/i18n/locales`에 위치합니다.
+- 번역 API 응답 샘플이 다양하므로, 새로운 응답 형태가 생기면 `parseTranslationContent`를 확장해 주세요.
 
-### 인증 흐름
+테스트 및 검증 권장 절차
+- 변경 후 `npm run dev`로 앱을 띄운 다음, 멘트 목록과 관리자 대기 목록에서 `contentLo`가 올바르게 표시되는지 확인하세요.
+- 자동화된 유닛 테스트 추가 권장: `parseTranslationContent`에 대해 다양한 포맷(plain, JSON string, fenced block, nested JSON)에 대한 테스트를 작성하세요.
 
-1.  **앱 초기화**: 사용자가 앱에 처음 접속하면 `App.tsx`의 `useEffect`가 `initAuthFromRefresh` 함수를 호출합니다.
-2.  **토큰 확인**: 이 함수는 스토리지(Local/Session Storage)에 저장된 Refresh Token을 백엔드 API로 보내 새로운 Access Token을 발급받으려고 시도합니다.
-3.  **인증 상태 결정**: 토큰 갱신에 성공하면 사용자는 로그인 상태가 되며, 실패하면 비로그인 상태로 앱을 사용하게 됩니다. `isAuthed()` 함수를 통해 이 상태를 확인할 수 있습니다.
-4.  **페이지 접근**: 사용자가 `/ments`와 같이 인증이 필요한 페이지로 이동하면 `RequireAuth` 컴포넌트가 `isAuthed()`를 호출하여 인증 상태를 검사하고, 비로그인 상태일 경우 `/login`으로 리디렉션합니다.
+참고 파일
+- `src/services/api.ts`
+- `src/storage/authStorage.ts`
+- `src/pages/MentListPage.tsx`
+- `src/pages/MentDetailPage.tsx`
+- `vite.config.ts`
