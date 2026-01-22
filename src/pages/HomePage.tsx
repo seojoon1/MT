@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next'; // เพิ่ม import นี้
 
 const HomePage = () => {
+  const { t } = useTranslation(); // เพิ่ม hook นี้
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -21,7 +23,7 @@ const HomePage = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // SVG Icons แทน heroicons
+  // SVG Icons
   const LanguageIcon = () => (
     <svg className="h-10 w-10 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
@@ -64,29 +66,54 @@ const HomePage = () => {
     </svg>
   );
 
+  // ฟีเจอร์ที่จะแสดง
+  const features = [
+    {
+      icon: <LanguageIcon />,
+      titleKey: 'homepage.aiTranslation',
+      descKey: 'homepage.aiTranslationDesc'
+    },
+    {
+      icon: <ShieldCheckIcon />,
+      titleKey: 'homepage.safeSecure',
+      descKey: 'homepage.safeSecureDesc'
+    },
+    {
+      icon: <GlobeAltIcon />,
+      titleKey: 'homepage.globalCommunity',
+      descKey: 'homepage.globalCommunityDesc'
+    },
+    {
+      icon: <HeartIcon />,
+      titleKey: 'homepage.romanticConnections',
+      descKey: 'homepage.romanticConnectionsDesc'
+    },
+  ];
+
+  // ขั้นตอนการใช้งาน
+  const steps = [
+    { step: 1, icon: <UserPlusIcon />, titleKey: 'homepage.signUp', descKey: 'homepage.signUpDesc' },
+    { step: 2, icon: <PencilSquareIcon />, titleKey: 'homepage.createMent', descKey: 'homepage.createMentDesc' },
+    { step: 3, icon: <LanguageIcon />, titleKey: 'homepage.aiTranslate', descKey: 'homepage.aiTranslateDesc' },
+    { step: 4, icon: <UserGroupIcon />, titleKey: 'homepage.connect', descKey: 'homepage.connectDesc' },
+  ];
+
   return (
     <div className="min-h-screen">
-        
-      {/* Hero Section - จัดให้อยู่กลางจอ */}
+      {/* Hero Section */}
       <section className="relative overflow-hidden min-h-[50vh] flex items-center justify-center px-4">
-
-      
         <div className="mx-auto max-w-4xl text-center">
-          {/* Hero Text ที่อยู่กลาง */}
           <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
-            <span className="block">Where Words Create</span>
+            <span className="block">{t('homepage.heroTitle1')}</span>
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600 mt-2">
-              Connections
+              {t('homepage.heroTitle2')}
             </span>
           </h1>
           
           <p className="mt-6 text-lg text-gray-600 sm:text-xl max-w-2xl mx-auto">
-            MentApp is more than just a social platform. It's a space where 
-            meaningful conversations begin, relationships blossom, and 
-            communities thrive across borders and languages.
+            {t('homepage.heroSubtitle')}
           </p>
           
-          {/* CTA Buttons ที่อยู่กลาง */}
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             {!isAuthenticated ? (
               <>
@@ -94,13 +121,13 @@ const HomePage = () => {
                   onClick={() => navigate('/register')}
                   className="px-8 py-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
                 >
-                  Get Started Free
+                  {t('homepage.getStartedFree')}
                 </button>
                 <button
                   onClick={() => navigate('/login')}
                   className="px-8 py-3 rounded-full border-2 border-purple-600 text-purple-600 font-semibold hover:bg-purple-50 transition-colors duration-300"
                 >
-                  Login
+                  {t('auth.login')}
                 </button>
               </>
             ) : (
@@ -108,73 +135,46 @@ const HomePage = () => {
                 onClick={() => navigate('/ments')}
                 className="px-8 py-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
               >
-                Explore Ments
+                {t('homepage.exploreMents')}
               </button>
             )}
           </div>
         </div>
       </section>
 
-      {/* Stats Section - อยู่ใต้ Hero */}
-
-
       {/* Features Section */}
       <section className="py-12 bg-gradient-to-b from-white to-purple-50 px-4">
-        
         <div className="mx-auto max-w-7xl">
-            
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            Why Choose MentApp?
+            {t('homepage.whyChoose')}
           </h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                icon: <LanguageIcon />,
-                title: 'AI Translation',
-                desc: 'Real-time translation across languages. Break language barriers instantly.'
-              },
-              {
-                icon: <ShieldCheckIcon />,
-                title: 'Safe & Secure',
-                desc: 'All ments are moderated for respectful and meaningful conversations.'
-              },
-              {
-                icon: <GlobeAltIcon />,
-                title: 'Global Community',
-                desc: 'Connect with people from different cultures and backgrounds.'
-              },
-              {
-                icon: <HeartIcon />,
-                title: 'Romantic Connections',
-                desc: 'Specialized in helping people build meaningful romantic relationships.'
-              },
-            ].map((feature, index) => (
+            {features.map((feature, index) => (
               <div key={index} className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
                 <div className="mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                <p className="text-gray-600">{feature.desc}</p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  {t(feature.titleKey)}
+                </h3>
+                <p className="text-gray-600">
+                  {t(feature.descKey)}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How It Works - Mobile Optimized */}
+      {/* How It Works Section */}
       <section className="py-12 px-4">
         <div className="mx-auto max-w-4xl">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            How It Works
+            {t('homepage.howItWorks')}
           </h2>
           
           <div className="flex flex-col sm:flex-row items-center justify-between">
-            {[
-              { step: 1, icon: <UserPlusIcon />, title: 'Sign Up', desc: 'Create account ' },
-              { step: 2, icon: <PencilSquareIcon />, title: 'Create Ment', desc: 'Share your thoughts' },
-              { step: 3, icon: <LanguageIcon />, title: 'AI Translate', desc: 'Auto translate to others' },
-              { step: 4, icon: <UserGroupIcon />, title: 'Connect', desc: 'Start conversations' },
-            ].map((item, index) => (
-              <div key={index} className="flex flex-col items-center mb-8 sm:mb-0">
+            {steps.map((item, index) => (
+              <div key={index} className="flex flex-col items-center mb-8 sm:mb-0 relative">
                 <div className="relative">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center mb-4 shadow-lg">
                     {item.icon}
@@ -183,8 +183,12 @@ const HomePage = () => {
                     {item.step}
                   </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">{item.title}</h3>
-                <p className="text-sm text-gray-600 text-center mt-1">{item.desc}</p>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {t(item.titleKey)}
+                </h3>
+                <p className="text-sm text-gray-600 text-center mt-1">
+                  {t(item.descKey)}
+                </p>
                 
                 {index < 3 && (
                   <div className="hidden sm:block absolute left-1/2 transform translate-x-16 mt-8 text-gray-400">
@@ -195,7 +199,6 @@ const HomePage = () => {
             ))}
           </div>
           
-          {/* Mobile Steps with arrows */}
           {isMobile && (
             <div className="mt-4 flex justify-center space-x-2">
               {[...Array(3)].map((_, i) => (
@@ -206,25 +209,25 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Final CTA */}
+      {/* Final CTA Section */}
       <section className="py-12 px-4 text-center bg-gradient-to-r from-pink-500/10 to-purple-600/10 mx-4 rounded-3xl mb-12">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">
-          Ready to Start Connecting?
+          {t('homepage.readyToStart')}
         </h2>
         <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-          Join thousands of users finding meaningful connections today
+          {t('homepage.joinThousands')}
         </p>
         
         <button
           onClick={() => navigate(isAuthenticated ? '/ments' : '/register')}
           className="px-10 py-4 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
         >
-          {isAuthenticated ? 'Browse Ments Now' : 'Get Started Now — Free'}
+          {isAuthenticated ? t('homepage.browseMentsNow') : t('homepage.getStartedNowFree')}
         </button>
         
         {!isAuthenticated && (
           <p className="mt-4 text-sm text-gray-500">
-            No credit card required • Sign up in 30 seconds
+            {t('homepage.noCreditCard')}
           </p>
         )}
       </section>
