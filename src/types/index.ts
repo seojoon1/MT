@@ -91,6 +91,7 @@ export type Profile = {
   nickname: string
   postCount: number
   totalLikes: number
+  bookmarkCount: number
 }
 
 // ============================

@@ -155,7 +155,7 @@ export default function MyPage() {
                       <div className="h-12 w-12 rounded-xl bg-gradient-to-r from-blue-100 to-blue-200 flex items-center justify-center mx-auto mb-3">
                         <Star className="h-6 w-6 text-blue-600" />
                       </div>
-                      <div className="text-2xl font-bold text-gray-900">{profile.postCount ?? 0}</div>
+                      <div className="text-2xl font-bold text-gray-900">{profile.bookmarkCount ?? 0}</div>
                       <div className="text-xs text-gray-500 mt-1">{t('mypage.bookmarks') || 'Bookmarks'}</div>
                     </div>
                   </div>

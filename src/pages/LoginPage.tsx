@@ -239,7 +239,7 @@ export default function LoginPage() {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-500">
-            © 2024 {t('common.appName')}. All rights reserved.
+            © 2026 {t('common.appName')}. All rights reserved.
           </p>
         </div>
       </div>
